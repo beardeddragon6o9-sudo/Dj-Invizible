@@ -1,0 +1,283 @@
+/* ===========================
+   Dual Mascots + Theme Swap (Invizible <-> Maverick)
+   =========================== */
+
+/* 1) BASE TOKENS (Invizible default) */
+:root{
+  --bg:#0c0d0e;
+  --bg-2:#111315;
+  --panel:#14171a;
+  --card:#171a1e;
+  --text:#e6e6e6;
+  --muted:#a6a6a6;
+  --line:rgba(255,255,255,.08);
+  --glow:rgba(0,0,0,.45);
+  --accent:#d9d9d9;
+  --accent-2:#8c8c8c;
+
+  /* Stage tuning */
+  --beam-color: 255,255,255;   /* RGB for spotlight */
+  --beam-opacity: .22;
+  --fog-opacity: .14;
+  --crowd-height: 120px;
+
+  /* Deck look */
+  --deck-bg1: rgba(255,255,255,0.04);
+  --deck-bg2: rgba(0,0,0,0.25);
+  --platform-bg1: rgba(255,255,255,0.05);
+  --platform-bg2: rgba(0,0,0,0.50);
+}
+
+/* 1b) MAVERICK THEME OVERRIDES */
+.theme-maverick{
+  --bg:#0e0c0a;
+  --bg-2:#19130f;
+  --panel:#15110d;
+  --card:#1b1611;
+  --text:#f0ece7;
+  --muted:#c8bfb6;
+  --line:rgba(255,235,205,.12);
+  --glow:rgba(30,10,0,.55);
+  --accent:#ffe3b0;      /* warm sand */
+  --accent-2:#b5835a;    /* leather tan */
+
+  --beam-color: 255,205,120; /* amber */
+  --beam-opacity:.25;
+  --fog-opacity:.18;
+
+  /* wood/amber deck */
+  --deck-bg1: rgba(120,70,30,0.25);
+  --deck-bg2: rgba(0,0,0,0.35);
+  --platform-bg1: rgba(255,210,150,0.20);
+  --platform-bg2: rgba(80,40,10,0.65);
+}
+
+/* 2) GLOBAL */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background: radial-gradient(1000px 600px at 20% 10%, var(--bg-2) 0%, var(--bg) 50%, #06080a 100%);
+  color:var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  line-height:1.45; overflow-x:hidden;
+}
+img,svg{max-width:100%;height:auto}
+a{color:inherit;text-decoration:none}
+a:hover{text-decoration:underline}
+button,input,textarea{font:inherit}
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important; transition:none !important; scroll-behavior:auto !important;}
+}
+
+/* 3) VENUE: lights, fog, crowd */
+.venue{ position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(1200px 700px at 50% -200px, rgba(255,255,255,0.06), transparent 70%);
+}
+.lights,.fog,.crowd{ position:absolute; inset:0 }
+.beam{
+  position:absolute; top:-4vh; width:40vw; height:80vh; transform-origin: top center;
+  filter: blur(1px); mix-blend-mode: screen; opacity: var(--beam-opacity);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(var(--beam-color),.75), rgba(var(--beam-color),0) 65%),
+    linear-gradient(to bottom, rgba(var(--beam-color),.5), rgba(var(--beam-color),0) 70%);
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  animation: sweep 9s ease-in-out infinite;
+}
+.beam.left{ left:10vw;  transform: rotate(-16deg) }
+.beam.right{ right:10vw; transform: rotate(16deg); animation-delay: -3s }
+.beam.center{ left:30vw; transform: rotate(0deg);  animation-delay: -6s }
+@keyframes sweep{ 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} }
+
+.fog::before,.fog::after{
+  content:""; position:absolute; left:-20vw; right:-20vw; top:20vh; height:40vh;
+  background:
+    radial-gradient(300px 120px at 20% 50%, rgba(255,255,255,.6), transparent 60%),
+    radial-gradient(260px 100px at 60% 50%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(220px 90px  at 85% 60%, rgba(255,255,255,.4), transparent 60%);
+  opacity: var(--fog-opacity); filter: blur(20px); animation: drift 30s linear infinite;
+}
+.fog::after{ top:34vh; animation-duration: 38s; animation-direction: reverse; opacity: calc(var(--fog-opacity) * 0.9) }
+@keyframes drift{ 0%{transform:translateX(0)} 100%{transform:translateX(40vw)} }
+
+.crowd{
+  bottom:0; height: var(--crowd-height);
+  background-repeat: repeat-x; background-size: 600px var(--crowd-height);
+  background-position: bottom center;
+  background-image: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="120" viewBox="0 0 600 120">\
+<rect width="600" height="120" fill="rgba(0,0,0,0)"/>\
+<path d="M0,120 C30,110 50,95 80,100 C110,105 120,90 145,95 C170,100 185,85 210,92 C235,99 250,85 280,98 C310,111 330,90 360,98 C390,106 410,92 440,100 C470,108 490,95 520,100 C550,105 570,95 600,100 L600,120 Z" fill="rgba(0,0,0,0.75)"/>\
+</svg>');
+  animation: wave 4s ease-in-out infinite;
+}
+@keyframes wave{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(3px) } }
+
+/* 4) APP LAYOUT */
+#app{ min-height:100vh; position:relative; z-index:1 }
+#stage{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+  gap:16px; padding:96px 24px 24px; max-width:1100px; margin:0 auto;
+}
+
+/* 5) CARDS */
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.2));
+  border:1px solid var(--line); border-radius:20px; padding:20px;
+  box-shadow:0 20px 50px var(--glow); backdrop-filter: blur(6px);
+}
+#hero{ grid-column:1/-1; text-align:center; padding:36px }
+#hero h1{ font-size:44px; margin:0 0 8px }
+#hero p{ color:var(--muted); margin:0 }
+.center{text-align:center} .muted{ color:var(--muted) }
+.highlight{ box-shadow:0 0 0 3px rgba(255,255,255,0.15) inset; transition: box-shadow .25s ease }
+
+/* 6) MASTHEAD + DECK */
+.masthead{ position:relative; display:flex; align-items:flex-start; justify-content:center; padding-top:84px; padding-bottom:24px; z-index:2 }
+.deck{
+  position:absolute; top:52px; width:700px; height:260px; border-radius:26px;
+  background: linear-gradient(180deg, var(--deck-bg1), var(--deck-bg2));
+  border:1px solid var(--line);
+  box-shadow: 0 24px 60px var(--glow), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.stage-platform{
+  position:absolute; left:50%; transform: translateX(-50%);
+  bottom:-14px; width:86%; height:26px; border-radius:14px;
+  background: linear-gradient(180deg, var(--platform-bg1), var(--platform-bg2));
+  border:1px solid rgba(255,255,255,.06); box-shadow: 0 12px 30px var(--glow);
+}
+.disc{
+  position:absolute; top:40px; width:180px; height:180px; border-radius:50%;
+  background: radial-gradient(circle at 50% 50%, #1b1b1b 0%, #0f0f0f 60%, #090909 100%);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.06); animation: spin 9s linear infinite;
+}
+.disc.left{ left:68px } .disc.right{ right:68px }
+@keyframes spin{ from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+/* 7) MASCOTS — circular frame + swap positions (center <-> top-right) */
+.mascot{
+  position: absolute;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  /* circular bezel */
+  background: radial-gradient(80px 80px at 60% 30%, #202325, #0f1113);
+  box-shadow: 0 18px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12);
+  transition: transform .18s ease, filter .18s ease,
+              left .25s ease, right .25s ease, top .25s ease, width .25s ease, height .25s ease;
+  z-index: 3;
+}
+.mascot:hover{ filter: brightness(1.05) }
+.mascot:active{ transform: scale(0.98) translateY(1px) }
+
+/* circular crop so both sit perfectly inside the circle */
+.mascot-img{
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 50%;
+  animation: bob 2.4s ease-in-out infinite;
+}
+@keyframes bob{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-6px) } }
+
+.summon-label{
+  position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+  font-size:12px; color:var(--muted); background: rgba(0,0,0,.35);
+  padding:4px 8px; border-radius:8px; border:1px solid var(--line);
+}
+
+/* Positions via classes:
+   - .primary sits CENTERED above the deck (large)
+   - .secondary sits TOP-RIGHT (small/tucked)
+*/
+.mascot.primary{
+  width: 240px; height: 240px;
+  left: 50%; top: 0; transform: translateX(-50%);
+}
+.mascot.secondary{
+  width: 140px; height: 140px;
+  right: 18%; top: 10px; left: auto; transform: none;
+  z-index: 2; opacity: .95;
+}
+
+/* 8) CHAT PANEL */
+#panel{
+  position:fixed; right:24px; bottom:124px;
+  width:360px; max-width:calc(100vw - 48px); max-height:60vh;
+  display:flex; flex-direction:column;
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:16px; overflow:hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  opacity:1; transform: translateY(0);
+  transition: transform .25s ease, opacity .25s ease; z-index: 4;
+}
+#panel.hidden{ opacity:0; transform: translateY(12px); pointer-events:none }
+body.ai-only #panel{ top:180px; bottom:auto; right:24px }
+
+#panel-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0));
+  border-bottom:1px solid var(--line);
+}
+#panel-header span{ font-weight:600; letter-spacing:.3px }
+#close-panel{ background:transparent; border:none; color:var(--text); font-size:18px; cursor:pointer; padding:6px }
+
+#messages{ padding:12px; overflow:auto; display:flex; flex-direction:column; gap:8px }
+.msg{
+  padding:10px 12px; border-radius:12px; line-height:1.35; max-width: 90%;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2); word-wrap: break-word;
+}
+.msg.user{ align-self:flex-end; background:#203040 }
+.msg.bot{ align-self:flex-start; background:#1b222c }
+
+#composer{ display:flex; gap:8px; padding:10px; border-top:1px solid var(--line) }
+#composer input{
+  flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+  background:#0d1217; color:var(--text); outline:none;
+}
+#composer input:focus{ border-color: rgba(255,255,255,.2) }
+#composer button{
+  padding:10px 14px; border-radius:10px; border:none;
+  background:var(--accent); color:#000; font-weight:700; cursor:pointer;
+  transition: filter .15s ease, transform .15s ease;
+}
+#composer button:hover{ filter:none; background:#ffffff; color:#000; box-shadow:0 6px 18px rgba(255,255,255,.08) }
+.button{ display:inline-block; padding:10px 14px; border-radius:10px; background:var(--accent-2); color:#0e0e0e; font-weight:700 }
+
+/* 9) AI-only: hide content grid */
+body.ai-only #stage{ display:none }
+
+/* 10) RESPONSIVE */
+@media (max-width: 980px){
+  .deck{ width: 620px; height: 240px }
+  .disc{ width:160px; height:160px; top: 38px }
+}
+@media (max-width: 700px){
+  .deck{ width: 92vw; height: 220px }
+  .disc{ width: 140px; height: 140px; top: 36px }
+  .mascot.primary{ width: 210px; height:210px }
+  .mascot.secondary{ right: 8%; top: 8px }
+  body.ai-only #panel{ top: 160px; right: 12px; width: calc(100vw - 24px) }
+}
+/* ============================
+   Mascot Final Positioning
+   ============================ */
+#mascot-invizible .mascot-img {
+  width: 98% !important;
+  height: 98% !important;
+  left: 2px !important;
+  top: -8px !important;
+  object-fit: contain !important;
+  position: relative !important;
+  margin: 0 auto !important;
+  border-radius: 50% !important;
+}
+
+#mascot-maverick .mascot-img {
+  width: 95% !important;
+  height: 95% !important;
+  left: 1px !important;
+  top: 0px !important;
+  object-fit: contain !important;
+  position: relative !important;
+  margin: 0 auto !important;
+  border-radius: 50% !important;
+}

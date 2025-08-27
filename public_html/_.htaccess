@@ -1,0 +1,4 @@
+AuthType Basic
+AuthName "Private Preview"
+AuthUserFile /home/u959199766/domains/djinvizible.com/public_html/api/.htpasswd
+Require valid-user
