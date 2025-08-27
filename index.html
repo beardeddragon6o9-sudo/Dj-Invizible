@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DJ INVIZIBLE — Interactive AI Mascot</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+
+<!-- Start on Invizible's theme; JS will toggle .theme-maverick when clicked -->
+<body class="ai-only theme-invizible">
+  <!-- Venue: stage background, lights, fog, crowd -->
+  <div class="venue" aria-hidden="true">
+    <div class="lights">
+      <div class="beam left"></div>
+      <div class="beam right"></div>
+      <div class="beam center"></div>
+    </div>
+    <div class="fog"></div>
+    <div class="crowd"></div>
+  </div>
+
+  <!-- Masthead: two mascots (Invizible primary, Maverick tucked behind) -->
+  <div class="masthead">
+    <div class="deck">
+      <div class="disc left"></div>
+      <div class="disc right"></div>
+      <div class="stage-platform"></div>
+    </div>
+
+    <!-- DJ Invizible (starts as primary/center) -->
+<button id="mascot-invizible" class="mascot primary" aria-label="DJ Invizible">
+  <img src="assets/img/invizible.png" alt="DJ Invizible Mascot" class="mascot-img">
+</button>
+
+<!-- Midnight Maverick (starts tucked top-right) -->
+<button id="mascot-maverick" class="mascot secondary" aria-label="Midnight Maverick">
+  <img src="assets/img/maverick.png" alt="Midnight Maverick Mascot" class="mascot-img">
+  <span class="summon-label">Summon Maverick</span>
+</button>
+
+
+  <div id="app">
+    <!-- Chat/Command panel -->
+    <div id="panel" class="hidden" aria-live="polite">
+      <div id="panel-header">
+        <span id="panel-title">DJ INVIZIBLE</span>
+        <button id="close-panel" aria-label="Close panel">✕</button>
+      </div>
+      <div id="messages"></div>
+      <form id="composer">
+        <input id="input" type="text" placeholder="Talk to me… try: mixes, shows, book, about, contact" autocomplete="off" />
+        <button type="submit" id="send">Send</button>
+        <input type="hidden" id="booking-persona" name="persona" value="invizible" />
+      </form>
+    </div>
+
+    <!-- Sections (hidden in AI-only mode for now) -->
+    <main id="stage">
+      <section id="hero" class="card center">
+        <h1>DJ INVIZIBLE</h1>
+        <p class="muted">An interactive site guided by an AI mascot. Ask about mixes, shows, booking & more.</p>
+      </section>
+      <section id="mixes" class="card"><h2>Mixes</h2></section>
+      <section id="shows" class="card"><h2>Upcoming Shows</h2></section>
+      <section id="book" class="card"><h2>Book Me</h2></section>
+      <section id="about" class="card"><h2>About</h2></section>
+      <section id="contact" class="card"><h2>Contact</h2></section>
+    </main>
+  </div>
+
+  <script src="assets/js/script.js" defer></script>
+</body>
+</html>
