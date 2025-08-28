@@ -1,8 +1,9 @@
-// api/chat.js — Vercel Serverless Function
+// api/chat.js — Vercel Serverless Function (improved diagnostics)
 export default async function handler(req, res) {
-  // --- CORS (allow your GitHub Pages origin) ---
   const origin = req.headers.origin || '';
-  const allowed = ['https://beardeddragon6o9-sudo.github.io']; // your Pages origin (no trailing slash)
+  const allowed = ['https://beardeddragon6o9-sudo.github.io'];
+
+  // CORS
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', allowed.includes(origin) ? origin : '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -13,11 +14,24 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  try {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // Early checks
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: 'Missing OPENAI_API_KEY on server' });
+  }
 
-    const { message, persona } = req.body || {};
-    if (!message) return res.status(400).json({ error: 'Missing message' });
+  try {
+    // Make sure we have parsed JSON
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch { body = {}; }
+    }
+    const { message, persona } = body || {};
+    if (!message) {
+      return res.status(400).json({ error: 'Missing message' });
+    }
 
     const personaSystem =
       persona === 'maverick'
@@ -36,7 +50,7 @@ Return ONLY strict JSON like:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini', // or gpt-4o-mini
+        model: 'gpt-4.1-mini',
         temperature: 0.7,
         max_tokens: 300,
         messages: [
@@ -47,13 +61,21 @@ Return ONLY strict JSON like:
     });
 
     const data = await r.json();
+
+    // Surface API errors clearly
+    if (!r.ok) {
+      console.error('OpenAI error:', data);
+      return res.status(502).json({ error: 'OpenAI API error', details: data });
+    }
+
     const raw = data?.choices?.[0]?.message?.content?.trim() || '{}';
 
-    // Parse strict JSON; fallback to simple scrape if needed
     let parsed;
     try {
       parsed = JSON.parse(raw);
     } catch {
+      // fallback scrape, but keep raw around for debugging
+      console.warn('Non-JSON model output:', raw);
       const intentMatch = raw.match(/"intent"\s*:\s*"(\w+)"/i);
       const replyMatch = raw.match(/"reply"\s*:\s*"([\s\S]*?)"/i);
       parsed = {
@@ -67,7 +89,7 @@ Return ONLY strict JSON like:
 
     return res.status(200).json({ text, intent });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'AI error' });
+    console.error('Server error:', err);
+    return res.status(500).json({ error: 'AI error', details: String(err) });
   }
 }
