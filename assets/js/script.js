@@ -11,7 +11,7 @@ const btnInviz = document.getElementById('mascot-invizible');
 const btnMav = document.getElementById('mascot-maverick');
 
 // === AI endpoint base (Vercel) ===
-const API_BASE = 'https://YOUR-PROJECT-NAME.vercel.app'; // no trailing slash
+const API_BASE   = 'https://dj-invizible.vercel.app';   // no trailing slash
 const AI_ENDPOINT = `${API_BASE}/api/chat`;
 async function askAI(userText) {
   addMsg(userText, 'user');
