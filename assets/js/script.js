@@ -10,6 +10,42 @@ const bookingPersona = document.getElementById('booking-persona');
 const btnInviz = document.getElementById('mascot-invizible');
 const btnMav = document.getElementById('mascot-maverick');
 
+// === AI endpoint base (Vercel) ===
+const API_BASE = 'https://YOUR-PROJECT-NAME.vercel.app'; // no trailing slash
+const AI_ENDPOINT = `${API_BASE}/api/chat`;
+async function askAI(userText) {
+  addMsg(userText, 'user');
+
+  const typing = document.createElement('div');
+  typing.className = 'msg bot';
+  typing.textContent = '…';
+  messages.appendChild(typing);
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    const res = await fetch(AI_ENDPOINT, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: userText, persona: activePersona })
+    });
+    const data = await res.json();
+    typing.remove();
+    speak(data.text || "I'm here.");
+
+    switch ((data.intent || '').toLowerCase()) {
+      case 'mixes': routes.mixes(); break;
+      case 'shows': routes.shows(); break;
+      case 'book':  routes.book();  break;
+      case 'about': routes.about(); break;
+      case 'contact': routes.contact(); break;
+    }
+  } catch (err) {
+    typing.remove();
+    speak("My brain glitched for a sec—try again.");
+    console.error(err);
+  }
+}
+
 // State
 let activePersona = 'invizible'; // default landing
 const wait = (ms) => new Promise(res => setTimeout(res, ms));
@@ -108,15 +144,8 @@ form?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = input.value.trim();
   if (!text) return;
-  addMsg(text, 'user');
-  input.value='';
-
-  const lower = text.toLowerCase();
-  const key = Object.keys(routes).find(k => lower.includes(k));
-  if (key) { routes[key](); return; }
-
-  // Fallback
-  speak("Try: mixes, shows, book, about, or contact.");
+  input.value = '';
+  await askAI(text); // <-- sends text to OpenAI endpoint instead of static routes
 });
 
 /* Hook for real AI later:
