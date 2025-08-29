@@ -88,3 +88,6 @@ app.listen(port, () => {
   console.log('Opening browser for Google consent…\n');
   open(url);
 });
+const USER_HINT = process.env.USER_HINT || "";
+// ...
+if (USER_HINT) params.set('login_hint', USER_HINT);
