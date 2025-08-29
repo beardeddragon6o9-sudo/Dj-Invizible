@@ -1,0 +1,10 @@
+# Local environment files
+.env
+.env.*
+tools/google-oauth/.env
+
+# Node modules
+node_modules
+
+# Logs
+npm-debug.log*
