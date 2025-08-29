@@ -1,95 +1,132 @@
-// api/chat.js — Vercel Serverless Function (improved diagnostics)
+// /api/chat.js
+// Next.js / Vercel serverless function (JavaScript)
+
+const FRIENDLY = {
+  quota: "Out of juice for now — try again later.",
+  generic: "I hit a snag. Mind trying again?",
+  network: "Network hiccup. Try again.",
+};
+
+function cors(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
+function systemPromptFor(persona) {
+  if ((persona || "").toLowerCase() === "maverick") {
+    return `You are Midnight Maverick, a friendly, country-themed DJ mascot. Speak casual with a light "yeehaw" vibe, but keep answers concise and helpful. Do not confirm bookings yourself; always say you'll place a tentative hold and wait for DJ confirmation.`;
+  }
+  // default: Invizible
+  return `You are DJ Invizible, an energetic party vibe DJ mascot. Keep replies tight, punchy, and upbeat. Do not confirm bookings yourself; always say you'll place a tentative hold and wait for DJ confirmation.`;
+}
+
 export default async function handler(req, res) {
-  const origin = req.headers.origin || '';
-  const allowed = ['https://beardeddragon6o9-sudo.github.io'];
-
-  // CORS
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', allowed.includes(origin) ? origin : '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    return res.status(200).end();
+  cors(res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
-  res.setHeader('Access-Control-Allow-Origin', allowed.includes(origin) ? origin : '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // Early checks
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-  if (!process.env.OPENAI_API_KEY) {
-    return res.status(500).json({ error: 'Missing OPENAI_API_KEY on server' });
+  const apiKey = process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_MODEL || "gpt-5-mini";
+
+  if (!apiKey) {
+    return res.status(200).json({
+      ok: false,
+      error: "missing_api_key",
+      message:
+        "Server is missing OPENAI_API_KEY. Add it in Vercel → Settings → Environment Variables.",
+    });
   }
 
   try {
-    // Make sure we have parsed JSON
-    let body = req.body;
-    if (typeof body === 'string') {
-      try { body = JSON.parse(body); } catch { body = {}; }
-    }
-    const { message, persona } = body || {};
-    if (!message) {
-      return res.status(400).json({ error: 'Missing message' });
+    // Accept either { message, persona } or { messages: [...], persona }
+    const body = req.body || {};
+    const userMessage = typeof body.message === "string" ? body.message.trim() : "";
+    const persona = body.persona || "invizible";
+
+    // Optional lightweight history (array of {role, content}), else single turn
+    const history = Array.isArray(body.messages) ? body.messages : [];
+    if (!userMessage && history.length === 0) {
+      return res.status(400).json({ ok: false, error: "bad_request", message: "Empty message." });
     }
 
-    const personaSystem =
-      persona === 'maverick'
-        ? `You are Midnight Maverick, a friendly country-themed DJ persona. Be concise, upbeat, with a touch of yeehaw.
-Return ONLY strict JSON like:
-{"reply":"<what you would say>","intent":"mixes|shows|book|about|contact|null"}`
-        : `You are DJ Invizible’s AI. Confident, concise, bass/breaks vibe.
-Return ONLY strict JSON like:
-{"reply":"<what you would say>","intent":"mixes|shows|book|about|contact|null"}`;
+    // Compose messages
+    const system = { role: "system", content: systemPromptFor(persona) };
+    const turn = userMessage ? [{ role: "user", content: userMessage }] : [];
+    const messages = [system, ...history, ...turn];
 
-    // Call OpenAI
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    // Safety: cap message length to avoid abuse during dev
+    if (userMessage && userMessage.length > 6000) {
+      return res.status(400).json({ ok: false, error: "message_too_long" });
+    }
+
+    // OpenAI Chat Completions
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini',
+        model,
+        messages,
         temperature: 0.7,
-        max_tokens: 300,
-        messages: [
-          { role: 'system', content: personaSystem },
-          { role: 'user', content: message },
-        ],
       }),
     });
 
-    const data = await r.json();
+    const isJSON = (r.headers.get("content-type") || "").includes("application/json");
+    const data = isJSON ? await r.json() : null;
 
-    // Surface API errors clearly
     if (!r.ok) {
-      console.error('OpenAI error:', data);
-      return res.status(502).json({ error: 'OpenAI API error', details: data });
+      const code =
+        data?.error?.code ||
+        (r.status === 429 ? "insufficient_quota" : `http_${r.status}`);
+      const friendly =
+        code === "insufficient_quota" || code === "quota_exceeded"
+          ? FRIENDLY.quota
+          : FRIENDLY.generic;
+
+      // Log minimal diagnostics to Vercel logs
+      console.error("[chat] OpenAI error:", { status: r.status, code, model });
+
+      return res.status(200).json({
+        ok: false,
+        error: code,
+        message: friendly,
+        details: data?.error || null,
+      });
     }
 
-    const raw = data?.choices?.[0]?.message?.content?.trim() || '{}';
+    const text = data?.choices?.[0]?.message?.content ?? "";
+    const usage = data?.usage || null;
 
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      // fallback scrape, but keep raw around for debugging
-      console.warn('Non-JSON model output:', raw);
-      const intentMatch = raw.match(/"intent"\s*:\s*"(\w+)"/i);
-      const replyMatch = raw.match(/"reply"\s*:\s*"([\s\S]*?)"/i);
-      parsed = {
-        reply: replyMatch ? replyMatch[1] : raw.replace(/\[intent:[^\]]+\]/i, '').trim(),
-        intent: intentMatch ? intentMatch[1] : null,
-      };
+    // Optional: simple usage log for transparency
+    if (usage) {
+      const inTok = usage.prompt_tokens ?? 0;
+      const outTok = usage.completion_tokens ?? 0;
+      console.log(
+        `[chat] persona=${persona} model=${model} tokens_in=${inTok} tokens_out=${outTok}`
+      );
+    } else {
+      console.log(`[chat] persona=${persona} model=${model} (no usage reported)`);
     }
 
-    const text = typeof parsed.reply === 'string' ? parsed.reply : 'Ok.';
-    const intent = typeof parsed.intent === 'string' ? parsed.intent.toLowerCase() : null;
-
-    return res.status(200).json({ text, intent });
+    return res.status(200).json({
+      ok: true,
+      provider: "openai",
+      model,
+      persona,
+      message: text,
+      usage,
+    });
   } catch (err) {
-    console.error('Server error:', err);
-    return res.status(500).json({ error: 'AI error', details: String(err) });
+    console.error("[chat] server error:", err);
+    return res.status(200).json({
+      ok: false,
+      error: "server_error",
+      message: FRIENDLY.network,
+    });
   }
 }
