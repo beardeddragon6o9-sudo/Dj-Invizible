@@ -79,9 +79,6 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model,
         messages,
-        // For GPT-5 Mini, 0.2 is a safe, supported value.
-        temperature: 0.2,
-    
       }),
     });
 
