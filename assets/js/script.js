@@ -147,7 +147,7 @@ form?.addEventListener('submit', async (e) => {
   input.value = '';
   await askAI(text); // <-- sends text to OpenAI endpoint instead of static routes
 });
-
+s
 /* Hook for real AI later:
    POST /api/chat with { message, persona: activePersona } and render the reply.
 */
