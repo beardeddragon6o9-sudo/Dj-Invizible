@@ -1,10 +1,11 @@
 // /api/chat.js
-// Next.js / Vercel serverless function (JavaScript)
+// Vercel/Next.js serverless function (JavaScript)
 
 const FRIENDLY = {
   quota: "Out of juice for now — try again later.",
   generic: "I hit a snag. Mind trying again?",
   network: "Network hiccup. Try again.",
+  bad: "Empty message. What should I say?",
 };
 
 function cors(res) {
@@ -14,11 +15,20 @@ function cors(res) {
 }
 
 function systemPromptFor(persona) {
-  if ((persona || "").toLowerCase() === "maverick") {
-    return `You are Midnight Maverick, a friendly, country-themed DJ mascot. Speak casual with a light "yeehaw" vibe, but keep answers concise and helpful. Do not confirm bookings yourself; always say you'll place a tentative hold and wait for DJ confirmation.`;
+  const p = (persona || "").toLowerCase();
+  if (p === "maverick") {
+    return [
+      "You are Midnight Maverick, a friendly, country-themed DJ mascot.",
+      "Voice: casual, upbeat, a subtle “yeehaw” flavor—but concise and helpful.",
+      "Never confirm bookings yourself. Always place a tentative hold and say DJ will confirm.",
+    ].join(" ");
   }
-  // default: Invizible
-  return `You are DJ Invizible, an energetic party vibe DJ mascot. Keep replies tight, punchy, and upbeat. Do not confirm bookings yourself; always say you'll place a tentative hold and wait for DJ confirmation.`;
+  // default — Invizible
+  return [
+    "You are DJ Invizible, an energetic bass/breaks DJ mascot.",
+    "Voice: tight, punchy, hype—but helpful and concise.",
+    "Never confirm bookings yourself. Always place a tentative hold and say DJ will confirm.",
+  ].join(" ");
 }
 
 export default async function handler(req, res) {
@@ -30,7 +40,6 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.OPENAI_API_KEY;
   const model = process.env.OPENAI_MODEL || "gpt-5-mini";
-
   if (!apiKey) {
     return res.status(200).json({
       ok: false,
@@ -41,28 +50,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Accept either { message, persona } or { messages: [...], persona }
     const body = req.body || {};
-    const userMessage = typeof body.message === "string" ? body.message.trim() : "";
     const persona = body.persona || "invizible";
 
-    // Optional lightweight history (array of {role, content}), else single turn
+    // Accept either { message } or full { messages: [...] }
+    const single = typeof body.message === "string" ? body.message.trim() : "";
     const history = Array.isArray(body.messages) ? body.messages : [];
-    if (!userMessage && history.length === 0) {
-      return res.status(400).json({ ok: false, error: "bad_request", message: "Empty message." });
+
+    if (!single && history.length === 0) {
+      return res.status(400).json({ ok: false, error: "bad_request", message: FRIENDLY.bad });
     }
-
-    // Compose messages
-    const system = { role: "system", content: systemPromptFor(persona) };
-    const turn = userMessage ? [{ role: "user", content: userMessage }] : [];
-    const messages = [system, ...history, ...turn];
-
-    // Safety: cap message length to avoid abuse during dev
-    if (userMessage && userMessage.length > 6000) {
+    if (single && single.length > 6000) {
       return res.status(400).json({ ok: false, error: "message_too_long" });
     }
 
-    // OpenAI Chat Completions
+    // Compose messages: system + prior + current
+    const system = { role: "system", content: systemPromptFor(persona) };
+    const turn = single ? [{ role: "user", content: single }] : [];
+    const messages = [system, ...history, ...turn];
+
+    // Call OpenAI (GPT-5 Mini)
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -72,7 +79,10 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model,
         messages,
-        temperature: 0.7,
+        // For GPT-5 Mini, 0.2 is a safe, supported value.
+        temperature: 0.2,
+        // Optional safety to avoid overly long rambles:
+        max_tokens: 400,
       }),
     });
 
@@ -83,13 +93,16 @@ export default async function handler(req, res) {
       const code =
         data?.error?.code ||
         (r.status === 429 ? "insufficient_quota" : `http_${r.status}`);
-      const friendly =
-        code === "insufficient_quota" || code === "quota_exceeded"
-          ? FRIENDLY.quota
-          : FRIENDLY.generic;
+      const msgRaw = data?.error?.message || "";
+      let friendly = FRIENDLY.generic;
 
-      // Log minimal diagnostics to Vercel logs
-      console.error("[chat] OpenAI error:", { status: r.status, code, model });
+      // Handle common cases nicely
+      if (code === "insufficient_quota" || code === "quota_exceeded") friendly = FRIENDLY.quota;
+      if (msgRaw.toLowerCase().includes("unsupported value") && msgRaw.toLowerCase().includes("temperature")) {
+        friendly = "Model didn’t like that setting. I’ll adjust and try again.";
+      }
+
+      console.error("[chat] OpenAI error:", { status: r.status, code, model, msg: msgRaw });
 
       return res.status(200).json({
         ok: false,
@@ -102,15 +115,13 @@ export default async function handler(req, res) {
     const text = data?.choices?.[0]?.message?.content ?? "";
     const usage = data?.usage || null;
 
-    // Optional: simple usage log for transparency
+    // Optional usage logs (helpful while developing)
     if (usage) {
-      const inTok = usage.prompt_tokens ?? 0;
-      const outTok = usage.completion_tokens ?? 0;
       console.log(
-        `[chat] persona=${persona} model=${model} tokens_in=${inTok} tokens_out=${outTok}`
+        `[chat] persona=${persona} model=${model} in=${usage.prompt_tokens ?? 0} out=${usage.completion_tokens ?? 0}`
       );
     } else {
-      console.log(`[chat] persona=${persona} model=${model} (no usage reported)`);
+      console.log(`[chat] persona=${persona} model=${model}`);
     }
 
     return res.status(200).json({
