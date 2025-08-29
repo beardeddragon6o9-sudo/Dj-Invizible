@@ -22,10 +22,15 @@ function buildAuthUrl() {
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
-    access_type: 'offline',         // <— ensures refresh_token is issued
-    prompt: 'consent',              // <— force consent so we get refresh_token
+    access_type: 'offline',
+    prompt: 'select_account consent',
     scope: SCOPES,
   });
+
+  if (process.env.USER_HINT) {
+    params.set('login_hint', process.env.USER_HINT);
+  }
+
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
@@ -88,6 +93,4 @@ app.listen(port, () => {
   console.log('Opening browser for Google consent…\n');
   open(url);
 });
-const USER_HINT = process.env.USER_HINT || "";
-// ...
-if (USER_HINT) params.set('login_hint', USER_HINT);
+
