@@ -81,8 +81,7 @@ export default async function handler(req, res) {
         messages,
         // For GPT-5 Mini, 0.2 is a safe, supported value.
         temperature: 0.2,
-        // Optional safety to avoid overly long rambles:
-        max_tokens: 400,
+    
       }),
     });
 
