@@ -5,18 +5,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
 
+  // Parse JSON safely (some runtimes give body as string)
+  let body = req.body;
   try {
-    const { start, end } = req.body || {};
-    if (!start || !end) {
-      return res.status(400).json({ ok: false, message: "Missing start or end date." });
-    }
+    if (typeof body === "string") body = JSON.parse(body || "{}");
+  } catch (e) {
+    return res.status(400).json({ ok: false, message: "Invalid JSON body." });
+  }
 
-    // Get short-lived Google access token
+  const { start, end, calendarId: overrideCalId, debug } = body || {};
+  if (!start || !end) {
+    return res.status(400).json({ ok: false, message: "Missing start or end date." });
+  }
+
+  const calendarId = overrideCalId || process.env.GOOGLE_CALENDAR_ID || "primary";
+
+  try {
     const accessToken = await getGoogleAccessToken();
 
-    const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
-
-    // Call Google Calendar FreeBusy API
     const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
       method: "POST",
       headers: {
@@ -30,31 +36,38 @@ export default async function handler(req, res) {
       }),
     });
 
-    const data = await r.json();
+    const data = await r.json().catch(() => ({}));
 
     if (!r.ok) {
       console.error("[availability] Google API error:", data);
-      return res.status(500).json({
+      return res.status(200).json({
         ok: false,
         message: "Failed to fetch calendar availability.",
-        details: data,
+        details: debug ? data : undefined,
+        status: r.status,
       });
     }
 
-    const busySlots = data.calendars[calendarId]?.busy || [];
+    // Some responses key by the exact ID you sent:
+    const calKey = data?.calendars?.[calendarId]
+      ? calendarId
+      : Object.keys(data?.calendars || {})[0];
+
+    const busySlots = (data?.calendars?.[calKey]?.busy) || [];
     const isAvailable = busySlots.length === 0;
 
     return res.status(200).json({
       ok: true,
-      calendarId,
+      calendarId: calKey || calendarId,
       available: isAvailable,
       busySlots,
     });
   } catch (err) {
     console.error("[availability] Server error:", err);
-    return res.status(500).json({
+    return res.status(200).json({
       ok: false,
       message: "Internal server error.",
+      details: debug ? String(err) : undefined,
     });
   }
 }
@@ -71,10 +84,10 @@ async function getGoogleAccessToken() {
     }),
   });
 
-  const data = await r.json();
-  if (!r.ok) {
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || !data?.access_token) {
     console.error("[google-access] Failed to get token:", data);
-    throw new Error(data.error || "Failed to fetch Google access token");
+    throw new Error(data?.error || "Failed to fetch Google access token");
   }
 
   return data.access_token;
