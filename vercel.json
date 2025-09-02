@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/holds/sweep?secret=2ioDtADkE8os8x3rxctd8hLf6CdNg594rJJpkH9wXSkA75ZnAeVPqPLVtwgk9jN8",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
