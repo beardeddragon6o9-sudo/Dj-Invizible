@@ -1,6 +1,5 @@
-// pages/api/hold.js
-import { google } from 'googleapis';
-import crypto from 'crypto';
+// /api/hold.js (Vercel serverless function, CommonJS)
+const { google } = require('googleapis');
 
 const {
   GOOGLE_CLIENT_ID,
@@ -11,15 +10,14 @@ const {
   HOLD_TTL_MINUTES,
 } = process.env;
 
-const DEFAULT_TTL_MINUTES = Number(HOLD_TTL_MINUTES || 60);
+const DEFAULT_TTL_MINUTES = Number(HOLD_TTL_MINUTES || 20);
 const DEFAULT_TIMEZONE = 'America/Vancouver';
 
 function bad(res, msg, code = 400, extra = {}) {
-  return res.status(code).json({ ok: false, error: msg, ...extra });
+  res.status(code).json({ ok: false, error: msg, ...extra });
 }
-
 function ok(res, data = {}) {
-  return res.status(200).json({ ok: true, ...data });
+  res.status(200).json({ ok: true, ...data });
 }
 
 function buildOAuth2() {
@@ -31,7 +29,6 @@ function buildOAuth2() {
   ) {
     throw new Error('Missing Google OAuth env vars.');
   }
-
   const oauth2Client = new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
@@ -42,21 +39,18 @@ function buildOAuth2() {
 }
 
 function asISO(d) {
-  try {
-    const s = new Date(d).toISOString();
-    if (isNaN(new Date(d).getTime())) throw new Error('Invalid date');
-    return s;
-  } catch {
-    return null;
-  }
+  const t = new Date(d);
+  return isNaN(t.getTime()) ? null : t.toISOString();
 }
 
-// Deterministic, calendar-safe ID (letters, digits, underscores & dashes)
+// base64url, safe for Google Calendar event IDs (letters/digits/-/_)
 function holdIdFrom({ start, end, email }) {
   const raw = `${start}|${end}|${email || ''}`;
-  // base64url -> replace +/ with -_ and strip =
-  const b64 = Buffer.from(raw).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  // Ensure starts with letter
+  const b64 = Buffer.from(raw)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
   return `hold_${b64.slice(0, 200)}`;
 }
 
@@ -69,7 +63,6 @@ async function isFree(cal, calendarId, startISO, endISO, timeZone) {
       items: [{ id: calendarId }],
     },
   });
-
   const periods = resp?.data?.calendars?.[calendarId]?.busy || [];
   return periods.length === 0;
 }
@@ -90,12 +83,11 @@ async function createHold(cal, calendarId, payload) {
   if (!startISO || !endISO) throw new Error('Invalid start/end datetime.');
   if (new Date(endISO) <= new Date(startISO)) throw new Error('end must be after start.');
 
-  // Check availability
   const free = await isFree(cal, calendarId, startISO, endISO, timeZone);
   if (!free) {
-    const err = new Error('Time window is not available.');
-    err.code = 'BUSY';
-    throw err;
+    const e = new Error('Time window is not available.');
+    e.code = 'BUSY';
+    throw e;
   }
 
   const expiresAt = new Date(Date.now() + Number(ttlMinutes) * 60_000);
@@ -114,13 +106,13 @@ async function createHold(cal, calendarId, payload) {
     : undefined;
 
   const requestBody = {
-    id, // deterministic so we can idempotently re-call without dupes
+    id, // deterministic for idempotency
     summary,
     description: descriptionLines.join('\n'),
     start: { dateTime: startISO, timeZone },
     end: { dateTime: endISO, timeZone },
     attendees,
-    transparency: 'opaque', // blocks the time
+    transparency: 'opaque',
     status: 'tentative',
     extendedProperties: {
       private: {
@@ -133,11 +125,9 @@ async function createHold(cal, calendarId, payload) {
     reminders: { useDefault: false },
   };
 
-  // Insert tentative event
   const resp = await cal.events.insert({
     calendarId,
     requestBody,
-    // Avoid sending emails on tentative holds
     sendUpdates: 'none',
   });
 
@@ -174,11 +164,7 @@ async function getHold(cal, calendarId, id) {
 
 async function deleteHold(cal, calendarId, id) {
   try {
-    await cal.events.delete({
-      calendarId,
-      eventId: id,
-      sendUpdates: 'none',
-    });
+    await cal.events.delete({ calendarId, eventId: id, sendUpdates: 'none' });
     return true;
   } catch (e) {
     if (e?.code === 404) return false;
@@ -186,8 +172,7 @@ async function deleteHold(cal, calendarId, id) {
   }
 }
 
-export default async function handler(req, res) {
-  // Basic method guard
+module.exports = async (req, res) => {
   if (!['POST', 'GET', 'DELETE'].includes(req.method)) {
     res.setHeader('Allow', 'POST, GET, DELETE');
     return bad(res, 'Method not allowed', 405);
@@ -205,7 +190,6 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'POST') {
-      // Body: { start, end, email?, name?, topic?, timeZone?, ttlMinutes? }
       const { start, end } = req.body || {};
       if (!start || !end) return bad(res, '`start` and `end` are required.');
       const data = await createHold(cal, calendarId, req.body);
@@ -213,7 +197,6 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      // Query: ?id=... [&calendarId=...]
       const id = (req.query.id || '').toString().trim();
       if (!id) return bad(res, '`id` is required.');
       const hold = await getHold(cal, calendarId, id);
@@ -222,7 +205,6 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      // Body or query: id
       const id = (req.body?.id || req.query?.id || '').toString().trim();
       if (!id) return bad(res, '`id` is required.');
       const existed = await deleteHold(cal, calendarId, id);
@@ -230,11 +212,10 @@ export default async function handler(req, res) {
       return ok(res, { released: true, id });
     }
   } catch (err) {
-    // Map common calendar errors to cleaner messages
     const msg = err?.message || 'Unknown error';
     if (err?.code === 'BUSY') return bad(res, msg, 409);
     if (err?.code === 404) return bad(res, 'Not found', 404);
     if (msg.includes('Invalid Time')) return bad(res, 'Invalid datetime(s).', 400);
     return bad(res, msg, 500, { details: process.env.NODE_ENV !== 'production' ? err : undefined });
   }
-}
+};
