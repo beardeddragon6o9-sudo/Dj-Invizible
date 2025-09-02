@@ -1,8 +1,5 @@
 {
   "crons": [
-    {
-      "path": "/api/holds/sweep",
-      "schedule": "*/10 * * * *"
-    }
+    { "path": "/api/sweep", "schedule": "*/10 * * * *" }
   ]
 }
