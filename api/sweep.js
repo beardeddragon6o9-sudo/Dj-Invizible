@@ -1,7 +1,7 @@
-// /api/holds/sweep.js
-// Deletes expired "hold" events where extendedProperties.private.autoCancelAt < now
-// Invoke with a shared secret: /api/holds/sweep?secret=YOUR_SECRET
-// Options: dryRun=1, calendarId=..., limit=500
+// /api/sweep.js  (or /api/holds/sweep.js)
+// Auto-confirms holds when attendee accepted; deletes expired holds.
+// Accepts Vercel cron (x-vercel-cron header) OR manual calls with ?secret=.../x-sweep-secret.
+// Options: dryRun=1, sendUpdates=all|none (default all), calendarId=..., limit=1000
 
 const { google } = require('googleapis');
 
@@ -11,7 +11,7 @@ const {
   GOOGLE_REDIRECT_URI,
   GOOGLE_REFRESH_TOKEN,
   CALENDAR_ID: DEFAULT_CALENDAR_ID,
-  SWEEP_SECRET, // set this in your env (e.g., Vercel Project Settings)
+  SWEEP_SECRET, // set in Vercel → Project Settings → Environment Variables
 } = process.env;
 
 function bad(res, msg, code = 400, extra = {}) {
@@ -22,69 +22,64 @@ function ok(res, data = {}) {
 }
 
 function buildOAuth2() {
-  if (
-    !GOOGLE_CLIENT_ID ||
-    !GOOGLE_CLIENT_SECRET ||
-    !GOOGLE_REDIRECT_URI ||
-    !GOOGLE_REFRESH_TOKEN
-  ) {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI || !GOOGLE_REFRESH_TOKEN) {
     throw new Error('Missing Google OAuth env vars.');
   }
-  const oauth2 = new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI
-  );
+  const oauth2 = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
   oauth2.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
   return oauth2;
 }
 
 async function listHoldEvents(cal, { calendarId, pageToken, timeMin }) {
-  // Filter by private extended property "hold=true" right in the query.
-  // We'll further filter by autoCancelAt client-side.
   return cal.events.list({
     calendarId,
     privateExtendedProperty: 'hold=true',
     singleEvents: true,
     orderBy: 'startTime',
     maxResults: 2500,
-    timeMin, // only need future (or near-past) events
+    timeMin, // scan from recent past
     pageToken,
   });
 }
 
+function anyAttendeeAccepted(attendees = []) {
+  return attendees.some(a => a && a.email && a.responseStatus === 'accepted');
+}
+
+function stripHoldProps(extPriv = {}) {
+  const copy = { ...extPriv };
+  delete copy.hold;
+  delete copy.holdId;
+  delete copy.autoCancelAt;
+  return copy;
+}
+
 module.exports = async (req, res) => {
-  // Method guard
   if (!['GET', 'POST'].includes(req.method)) {
     res.setHeader('Allow', 'GET, POST');
     return bad(res, 'Method not allowed', 405);
   }
 
-  // Secret check (query or header)
- // If called by Vercel cron, allow without secret.
-// Otherwise, require the secret for manual calls.
-const vercelCronHeader = req.headers['x-vercel-cron'];
-const secret =
-  (req.query.secret && String(req.query.secret)) ||
-  req.headers['x-sweep-secret'];
+  // Allow Vercel cron without secret; require secret for manual calls
+  const isVercelCron = !!req.headers['x-vercel-cron'];
+  const secret =
+    (req.query.secret && String(req.query.secret)) ||
+    req.headers['x-sweep-secret'];
 
-if (!vercelCronHeader) {
-  if (!SWEEP_SECRET || secret !== SWEEP_SECRET) {
-    return bad(res, 'Unauthorized', 401);
+  if (!isVercelCron) {
+    if (!SWEEP_SECRET || secret !== SWEEP_SECRET) {
+      return bad(res, 'Unauthorized', 401);
+    }
   }
-}
 
-
-  // Options
   const calendarId = (req.query.calendarId || DEFAULT_CALENDAR_ID || 'primary').trim();
   const dryRun = req.query.dryRun === '1' || req.query.dryRun === 'true';
+  const sendUpdates = (req.query.sendUpdates || 'all'); // 'all' or 'none'
   const limit = Math.max(1, Math.min(10000, Number(req.query.limit || '1000')));
 
   const now = new Date();
   const nowISO = now.toISOString();
-
-  // Look from a short recent past to catch any stragglers
-  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(); // 24h back
 
   let oauth2;
   try {
@@ -92,15 +87,18 @@ if (!vercelCronHeader) {
   } catch (e) {
     return bad(res, e.message, 500);
   }
-
   const cal = google.calendar({ version: 'v3', auth: oauth2 });
 
-  let pageToken = undefined;
+  let pageToken;
   let examined = 0;
   let deleted = 0;
+  let confirmed = 0;
   let wouldDelete = 0;
+  let wouldConfirm = 0;
   const deletedIds = [];
+  const confirmedIds = [];
   const wouldDeleteIds = [];
+  const wouldConfirmIds = [];
 
   try {
     while (true) {
@@ -109,31 +107,55 @@ if (!vercelCronHeader) {
 
       for (const ev of events) {
         if (examined >= limit) break;
-
         examined += 1;
+
         const priv = ev.extendedProperties?.private || {};
         const autoCancelAt = priv.autoCancelAt;
+        const attendees = ev.attendees || [];
+        const expiresAt = autoCancelAt ? new Date(autoCancelAt) : null;
+        const accepted = anyAttendeeAccepted(attendees);
 
-        if (!autoCancelAt) continue;
+        // 1) Auto-confirm if accepted
+        if (accepted) {
+          if (dryRun) {
+            wouldConfirm += 1;
+            wouldConfirmIds.push(ev.id);
+          } else {
+            const newPriv = {
+              ...stripHoldProps(priv),
+              confirmedFromHold: 'true',
+              confirmedAt: nowISO,
+            };
+            await cal.events.patch({
+              calendarId,
+              eventId: ev.id,
+              sendUpdates, // 'all' to notify, 'none' to stay silent
+              requestBody: {
+                status: 'confirmed',
+                extendedProperties: { private: newPriv },
+                // (Optional) turn on default reminders once confirmed:
+                reminders: { useDefault: true },
+                // (Optional) clean up summary:
+                summary: ev.summary?.replace(/^HOLD:\s*/i, '').trim() || ev.summary,
+              },
+            });
+            confirmed += 1;
+            confirmedIds.push(ev.id);
+          }
+          continue; // no further processing
+        }
 
-        const expiresAt = new Date(autoCancelAt);
-        if (isNaN(expiresAt.getTime())) continue;
-
-        if (expiresAt <= now) {
+        // 2) Delete if expired
+        if (expiresAt && !isNaN(expiresAt.getTime()) && expiresAt <= now) {
           if (dryRun) {
             wouldDelete += 1;
             wouldDeleteIds.push(ev.id);
           } else {
             try {
-              await cal.events.delete({
-                calendarId,
-                eventId: ev.id,
-                sendUpdates: 'none',
-              });
+              await cal.events.delete({ calendarId, eventId: ev.id, sendUpdates: 'none' });
               deleted += 1;
               deletedIds.push(ev.id);
             } catch (e) {
-              // If already gone, ignore; otherwise bubble up
               if (e?.code !== 404) throw e;
             }
           }
@@ -149,11 +171,16 @@ if (!vercelCronHeader) {
       calendarId,
       now: nowISO,
       dryRun,
+      sendUpdates,
       limit,
       examined,
+      confirmed,
       deleted,
+      wouldConfirm,
       wouldDelete,
+      confirmedIds,
       deletedIds,
+      wouldConfirmIds,
       wouldDeleteIds,
     });
   } catch (err) {

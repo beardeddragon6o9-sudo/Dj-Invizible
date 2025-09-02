@@ -120,7 +120,17 @@ async function createHold(cal, calendarId, payload) {
         holdId: id,
         autoCancelAt: expiresAt.toISOString(),
         createdAt: new Date().toISOString(),
-      },
+      },// inside /api/hold.js -> requestBody.extendedProperties.private
+extendedProperties: {
+  private: {
+    hold: 'true',
+    holdId: id,
+    autoCancelAt: expiresAt.toISOString(),
+    createdAt: new Date().toISOString(),
+    autoConfirmOnAccept: 'true' // <-- hint; sweeper doesn't strictly require it
+  },
+},
+
     },
     reminders: { useDefault: false },
   };
