@@ -10,9 +10,13 @@ const {
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI,
   GOOGLE_REFRESH_TOKEN,
-  CALENDAR_ID: DEFAULT_CALENDAR_ID,
-  SWEEP_SECRET, // set in Vercel → Project Settings → Environment Variables
+  CALENDAR_ID,
+  GOOGLE_CALENDAR_ID,
+  HOLD_TTL_MINUTES,
 } = process.env;
+
+const DEFAULT_CALENDAR_ID = CALENDAR_ID || GOOGLE_CALENDAR_ID;
+
 
 function bad(res, msg, code = 400, extra = {}) {
   res.status(code).json({ ok: false, error: msg, ...extra });
@@ -186,5 +190,14 @@ module.exports = async (req, res) => {
   } catch (err) {
     const msg = err?.message || 'Unknown error';
     return bad(res, msg, 500, { details: process.env.NODE_ENV !== 'production' ? err : undefined });
+  }
+};
+// /api/sweep.js  (wrap your existing code)
+module.exports = async (req, res) => {
+  try {
+    // ... your existing sweeper logic ...
+  } catch (err) {
+    console.error('[sweep] crash:', err);
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
 };
