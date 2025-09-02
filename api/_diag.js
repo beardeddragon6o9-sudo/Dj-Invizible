@@ -8,6 +8,8 @@
       "SWEEP_SECRET"
     ];
     const present = Object.fromEntries(keys.map(k => [k, !!process.env[k]]));
+    try { require("googleapis"); }
+    catch (e) { return res.status(500).json({ ok:false, stage:"require", error:String(e), present }); }
     return res.status(200).json({ ok:true, present });
   } catch (e) {
     return res.status(500).json({ ok:false, error:String(e) });
