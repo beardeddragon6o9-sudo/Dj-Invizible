@@ -1,0 +1,27 @@
+{
+  "name": "dj-invizible",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beardeddragon6o9-sudo/Dj-Invizible.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/beardeddragon6o9-sudo/Dj-Invizible/issues"
+  },
+  "homepage": "https://github.com/beardeddragon6o9-sudo/Dj-Invizible#readme",
+  "type": "commonjs",
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "googleapis": "^159.0.0"
+  }
+}
