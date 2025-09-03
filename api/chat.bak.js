@@ -1,8 +1,8 @@
-﻿// /api/chat.js
-// Final optimized version â€” GPT-5 Mini safe, persona-aware, and stable.
+// /api/chat.js
+// Final optimized version — GPT-5 Mini safe, persona-aware, and stable.
 
 const FRIENDLY = {
-  quota: "Out of juice for now â€” try again later.",
+  quota: "Out of juice for now — try again later.",
   generic: "I hit a snag. Mind trying again?",
   network: "Network hiccup. Try again.",
   bad: "Empty message. What should I say?",
@@ -24,7 +24,7 @@ function systemPromptFor(persona) {
       - Do NOT confirm bookings yourself. Instead, suggest placing a tentative hold and notify DJ Invizible.
     `;
   }
-  // Default â†’ DJ Invizible
+  // Default → DJ Invizible
   return `
     You are DJ Invizible, an energetic bass/breaks DJ mascot.
     - Tone: hype, punchy, fun, and upbeat.
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       ok: false,
       error: "missing_api_key",
       message:
-        "Server is missing OPENAI_API_KEY. Add it in Vercel â†’ Settings â†’ Environment Variables.",
+        "Server is missing OPENAI_API_KEY. Add it in Vercel → Settings → Environment Variables.",
     });
   }
 
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
     const turn = single ? [{ role: "user", content: single }] : [];
     const messages = [system, ...history, ...turn];
 
-    // Call OpenAI GPT-5 Mini â€” no unsupported params
+    // Call OpenAI GPT-5 Mini — no unsupported params
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model,
         messages,
-        // No temperature, no max_tokens â†’ GPT-5 Mini auto-handles
+        // No temperature, no max_tokens → GPT-5 Mini auto-handles
       }),
     });
 
@@ -135,6 +135,3 @@ export default async function handler(req, res) {
     });
   }
 }
-
-module.exports = handler;
-
