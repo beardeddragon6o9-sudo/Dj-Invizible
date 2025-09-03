@@ -1,8 +1,3 @@
-# Backup your current file (just in case)
-Copy-Item api\hold.js api\hold.bak.js -ErrorAction SilentlyContinue
-
-# Write a clean hold.js (no requestBody.id, simple flow, clear errors)
-@'
 const { google } = require("googleapis");
 
 const {
@@ -145,8 +140,3 @@ module.exports = async (req, res) => {
     return bad(res, err?.message || "Unknown error", 500);
   }
 };
-'@ | Set-Content -Encoding UTF8 api\hold.js
-
-git add api\hold.js
-git commit -m "chore: replace hold.js with minimal no-custom-id version"
-git push
