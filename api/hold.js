@@ -93,7 +93,7 @@ async function createHold(cal, calendarId, payload) {
   }
 
   const expiresAt = new Date(Date.now() + Number(ttlMinutes) * 60_000);
-  const id = holdIdFrom({ start: startISO, end: endISO, email });
+  const holdId = holdIdFrom({ start: startISO, end: endISO, email });
 
   const summary = `HOLD: ${name?.trim() || email || 'Guest'}`;
   const descriptionLines = [
@@ -108,7 +108,7 @@ async function createHold(cal, calendarId, payload) {
     : undefined;
 
   const requestBody = {
-    id, // deterministic for idempotency
+  
     summary,
     description: descriptionLines.join('\n'),
     start: { dateTime: startISO, timeZone },
