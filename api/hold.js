@@ -1,4 +1,4 @@
-const { google } = require("googleapis");
+﻿import { google } from "googleapis";
 
 const {
   GOOGLE_CLIENT_ID,
@@ -36,7 +36,7 @@ async function isFree(cal, calendarId, startISO, endISO, timeZone) {
   return busy.length === 0;
 }
 
-module.exports = async (req, res) => {
+export default async (req, res) => {
   try {
     const method = req.method || "GET";
     const calendarId = (req.query.calendarId || req.body?.calendarId || DEFAULT_CALENDAR_ID).trim();
@@ -66,7 +66,7 @@ module.exports = async (req, res) => {
       const attendees = email ? [{ email, displayName: name || undefined, responseStatus: "needsAction" }] : undefined;
 
       const requestBody = {
-        // IMPORTANT: no custom event id here — let Google generate a valid one
+        // IMPORTANT: no custom event id here â€” let Google generate a valid one
         summary: `HOLD: ${name?.trim() || email || "Guest"}`,
         description: descriptionLines.join("\n"),
         start: { dateTime: startISO, timeZone },
@@ -140,3 +140,4 @@ module.exports = async (req, res) => {
     return bad(res, err?.message || "Unknown error", 500);
   }
 };
+

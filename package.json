@@ -17,7 +17,7 @@
     "url": "https://github.com/beardeddragon6o9-sudo/Dj-Invizible/issues"
   },
   "homepage": "https://github.com/beardeddragon6o9-sudo/Dj-Invizible#readme",
-  "type": "commonjs",
+  "type": "module",
   "engines": {
     "node": "20.x"
   },

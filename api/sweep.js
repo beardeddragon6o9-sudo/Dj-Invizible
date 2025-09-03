@@ -8,7 +8,7 @@
  *            calendarId=..., limit=1000, sinceDays=1, horizonDays=60
  */
 
-const { google } = require("googleapis");
+import { google } from "googleapis";
 
 function bad(res, msg, code = 400, extra = {}) {
   return res.status(code).json({ ok: false, error: msg, ...extra });
@@ -49,7 +49,7 @@ function stripHoldProps(priv = {}) {
   return copy;
 }
 
-module.exports = async (req, res) => {
+export default async (req, res) => {
   try {
     // Allow Vercel cron without secret; require secret for manual calls
     const isVercelCron = !!req.headers["x-vercel-cron"];
@@ -191,3 +191,4 @@ module.exports = async (req, res) => {
     return bad(res, err?.message || String(err), 500);
   }
 };
+

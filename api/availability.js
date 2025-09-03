@@ -1,4 +1,4 @@
-﻿const { google } = require("googleapis");
+﻿import { google } from "googleapis";
 
 function bad(res, msg, code=400, extra={}) { return res.status(code).json({ ok:false, error: msg, ...extra }); }
 function ok(res, data={}) { return res.status(200).json({ ok:true, ...data }); }
@@ -13,7 +13,7 @@ function buildOAuth2() {
   return oauth2;
 }
 
-module.exports = async (req, res) => {
+export default async (req, res) => {
   try {
     if (req.method !== "POST") {
       res.setHeader("Allow","POST");
@@ -42,3 +42,4 @@ module.exports = async (req, res) => {
     return bad(res, err?.message || "Unknown error", 500);
   }
 };
+
