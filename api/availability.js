@@ -1,94 +1,44 @@
-// /api/availability.js
-export default async function handler(req, res) {
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") {
-    return res.status(405).json({ ok: false, error: "method_not_allowed" });
-  }
+﻿const { google } = require("googleapis");
 
-  // Parse JSON safely (some runtimes give body as string)
-  let body = req.body;
+function bad(res, msg, code=400, extra={}) { return res.status(code).json({ ok:false, error: msg, ...extra }); }
+function ok(res, data={}) { return res.status(200).json({ ok:true, ...data }); }
+
+function buildOAuth2() {
+  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GOOGLE_REFRESH_TOKEN } = process.env;
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI || !GOOGLE_REFRESH_TOKEN) {
+    throw new Error("Missing Google OAuth env vars.");
+  }
+  const oauth2 = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+  oauth2.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+  return oauth2;
+}
+
+module.exports = async (req, res) => {
   try {
-    if (typeof body === "string") body = JSON.parse(body || "{}");
-  } catch (e) {
-    return res.status(400).json({ ok: false, message: "Invalid JSON body." });
-  }
-
-  const { start, end, calendarId: overrideCalId, debug } = body || {};
-  if (!start || !end) {
-    return res.status(400).json({ ok: false, message: "Missing start or end date." });
-  }
-
-  const calendarId = overrideCalId || process.env.GOOGLE_CALENDAR_ID || "primary";
-
-  try {
-    const accessToken = await getGoogleAccessToken();
-
-    const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        timeMin: new Date(start).toISOString(),
-        timeMax: new Date(end).toISOString(),
-        items: [{ id: calendarId }],
-      }),
-    });
-
-    const data = await r.json().catch(() => ({}));
-
-    if (!r.ok) {
-      console.error("[availability] Google API error:", data);
-      return res.status(200).json({
-        ok: false,
-        message: "Failed to fetch calendar availability.",
-        details: debug ? data : undefined,
-        status: r.status,
-      });
+    if (req.method !== "POST") {
+      res.setHeader("Allow","POST");
+      return bad(res, "method_not_allowed", 405);
     }
 
-    // Some responses key by the exact ID you sent:
-    const calKey = data?.calendars?.[calendarId]
-      ? calendarId
-      : Object.keys(data?.calendars || {})[0];
+    const { start, end, timeZone="America/Vancouver", calendarId } = req.body || {};
+    if (!start || !end) return bad(res, "Missing start or end date.");
 
-    const busySlots = (data?.calendars?.[calKey]?.busy) || [];
-    const isAvailable = busySlots.length === 0;
+    const calId = (calendarId || process.env.CALENDAR_ID || process.env.GOOGLE_CALENDAR_ID || "primary").trim();
 
-    return res.status(200).json({
-      ok: true,
-      calendarId: calKey || calendarId,
-      available: isAvailable,
-      busySlots,
+    const auth = buildOAuth2();
+    const cal = google.calendar({ version: "v3", auth });
+    const fb = await cal.freebusy.query({
+      requestBody: {
+        timeMin: new Date(start).toISOString(),
+        timeMax: new Date(end).toISOString(),
+        timeZone,
+        items: [{ id: calId }]
+      }
     });
+
+    const busy = fb?.data?.calendars?.[calId]?.busy || [];
+    return ok(res, { calendarId: calId, timeZone, busy, available: busy.length === 0 });
   } catch (err) {
-    console.error("[availability] Server error:", err);
-    return res.status(200).json({
-      ok: false,
-      message: "Internal server error.",
-      details: debug ? String(err) : undefined,
-    });
+    return bad(res, err?.message || "Unknown error", 500);
   }
-}
-
-async function getGoogleAccessToken() {
-  const r = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-      grant_type: "refresh_token",
-    }),
-  });
-
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok || !data?.access_token) {
-    console.error("[google-access] Failed to get token:", data);
-    throw new Error(data?.error || "Failed to fetch Google access token");
-  }
-
-  return data.access_token;
-}
+};
