@@ -1,7 +1,6 @@
-<script type="module">
-// Simple streaming chat client for /api/chat/stream
+// assets/chat.js (pure JS module, no <script> tags)
 
-const log = document.getElementById('chat-log');
+const log  = document.getElementById('chat-log');
 const form = document.getElementById('chat-form');
 const inp  = document.getElementById('chat-input');
 
@@ -28,6 +27,11 @@ async function askStream(messages, { system } = {}, onDelta) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages, system }),
   });
+
+  if (!r.ok || !r.body) {
+    throw new Error(`HTTP ${r.status}`);
+  }
+
   const reader = r.body.getReader();
   const dec = new TextDecoder();
   let full = '';
@@ -83,4 +87,3 @@ form.addEventListener('submit', async (e) => {
     console.error(err);
   }
 });
-</script>
