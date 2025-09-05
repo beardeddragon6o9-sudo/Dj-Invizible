@@ -1,39 +1,85 @@
-import OpenAI from "openai";
+﻿import OpenAI from "openai";
+
+// Explicit Node runtime (required for res.write on Vercel)
 export const config = { runtime: "nodejs" };
 
+// --- helpers ---
+async function readJson(req) {
+  // Works whether req.body exists or not
+  try {
+    if (req.body !== undefined) {
+      if (typeof req.body === "string") return JSON.parse(req.body || "{}");
+      if (typeof req.body === "object") return req.body || {};
+    }
+    const chunks = [];
+    for await (const ch of req) chunks.push(ch);
+    const raw = Buffer.concat(chunks).toString("utf8");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function sseHeaders(res) {
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+}
+
+function sseWrite(res, obj) {
+  res.write(`data: ${JSON.stringify(obj)}\n\n`);
+}
+
+// --- handler ---
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt5-mini";
+// if CHAT_MODEL is set, prefer it; otherwise fall back to a widely-available default
+const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-4o-mini";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).end("Method Not Allowed");
   }
-  const { messages = [], system, model } = req.body || {};
-  const chatMessages = [];
-  if (system) chatMessages.push({ role: "system", content: system });
-  for (const m of messages) chatMessages.push({ role: m.role, content: m.content });
 
-  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
-  res.flushHeaders?.();
+  // Always set SSE headers before doing work
+  sseHeaders(res);
 
   try {
+    const body = await readJson(req);
+    const { messages = [], system, model } = body || {};
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      sseWrite(res, { error: "Missing 'messages' array in JSON body." });
+      sseWrite(res, { done: true });
+      return res.end();
+    }
+
+    const chatMessages = [];
+    if (system) chatMessages.push({ role: "system", content: String(system) });
+    for (const m of messages) {
+      if (m && m.role && m.content != null) {
+        chatMessages.push({ role: String(m.role), content: String(m.content) });
+      }
+    }
+
     const stream = await client.chat.completions.create({
       model: model || DEFAULT_MODEL,
       messages: chatMessages,
       stream: true,
     });
+
     for await (const part of stream) {
-      const delta = part.choices?.[0]?.delta?.content || "";
-      if (delta) res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+      const delta = part?.choices?.[0]?.delta?.content || "";
+      if (delta) sseWrite(res, { delta });
     }
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+
+    sseWrite(res, { done: true });
     res.end();
   } catch (err) {
-    console.error(err);
-    try { res.write(`data: ${JSON.stringify({ error: err.message || "server_error" })}\n\n`); }
+    console.error("[/api/chat/stream] error:", err);
+    // Send error to the client over SSE so you actually see it
+    try { sseWrite(res, { error: err?.message || "server_error" }); sseWrite(res, { done: true }); }
     finally { res.end(); }
   }
 }
