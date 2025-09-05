@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-export const config = { runtime: "nodejs" }; // enables res.write in Vercel
+export const config = { runtime: "nodejs" };
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt5-mini";
@@ -9,13 +9,11 @@ export default async function handler(req, res) {
     res.setHeader("Allow", "POST");
     return res.status(405).end("Method Not Allowed");
   }
-
   const { messages = [], system, model } = req.body || {};
   const chatMessages = [];
   if (system) chatMessages.push({ role: "system", content: system });
   for (const m of messages) chatMessages.push({ role: m.role, content: m.content });
 
-  // SSE headers
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
@@ -27,7 +25,6 @@ export default async function handler(req, res) {
       messages: chatMessages,
       stream: true,
     });
-
     for await (const part of stream) {
       const delta = part.choices?.[0]?.delta?.content || "";
       if (delta) res.write(`data: ${JSON.stringify({ delta })}\n\n`);
