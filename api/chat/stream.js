@@ -66,8 +66,10 @@ export default async function handler(req, res) {
     const stream = await client.chat.completions.create({
       model: model || DEFAULT_MODEL,
       messages: chatMessages,
+      temperature: TEMPERATURE,
       stream: true,
-    });
+    });const TEMPERATURE = Number(process.env.CHAT_TEMPERATURE || "0.9");
+
 
     for await (const part of stream) {
       const delta = part?.choices?.[0]?.delta?.content || "";
