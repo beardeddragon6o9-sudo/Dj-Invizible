@@ -93,3 +93,5 @@ export default async function handler(req, res) {
     finally { res.end(); }
   }
 }
+
+// redeploy guard 2025-09-05T20:27:13.8033181-07:00
