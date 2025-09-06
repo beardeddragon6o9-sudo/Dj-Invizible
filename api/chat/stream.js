@@ -1,9 +1,16 @@
-﻿import OpenAI from "openai";
-export const config = { runtime: "nodejs" };
+﻿export const config = { runtime: "nodejs" };
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-4o-mini";
-const TEMPERATURE = Number(process.env.CHAT_TEMPERATURE || "0.9");
+const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5o-mini";
+const TEMPERATURE   = Number(process.env.CHAT_TEMPERATURE || "0.9");
+
+async function getOpenAIClient() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not set on this deployment.");
+  }
+  // Dynamic import so missing module doesn't crash at init time
+  const { default: OpenAI } = await import("openai");
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 async function readJson(req) {
   try {
@@ -24,30 +31,31 @@ function sseHeaders(res) {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 }
-function sseWrite(res, obj) { res.write(\`data: \${JSON.stringify(obj)}\\n\\n\`); }
+function sseWrite(res, obj) { res.write(`data: ${JSON.stringify(obj)}\n\n`); }
 
 export default async function handler(req, res) {
+  // Allow POST body or GET ?q=
   if (req.method !== "POST" && !(req.method === "GET" && req.query?.q)) {
-    res.setHeader("Allow", "POST, GET");
+    res.setHeader("Allow","POST, GET");
     return res.status(405).end("Method Not Allowed");
   }
 
   sseHeaders(res);
 
   try {
+    // Parse body / query
     let body = {};
     if (req.method === "POST") body = await readJson(req);
 
-    // Accept multiple shapes
     const q = req.query?.q;
     const prompt = body?.prompt || body?.text || (typeof body === "string" ? body : null) || q;
+
     let messages = Array.isArray(body?.messages) ? body.messages : [];
     if (!messages.length && prompt) {
       messages = [{ role: "user", content: String(prompt) }];
     }
-
     const system = body?.system;
-    const model = body?.model || DEFAULT_MODEL;
+    const model  = body?.model || DEFAULT_MODEL;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       sseWrite(res, { error: "Missing 'messages' array or 'prompt'/'text'/'q'." });
@@ -55,12 +63,17 @@ export default async function handler(req, res) {
       return res.end();
     }
 
+    // Build messages final
     const chatMessages = [];
     if (system) chatMessages.push({ role: "system", content: String(system) });
     for (const m of messages) if (m?.role && m?.content != null) {
       chatMessages.push({ role: String(m.role), content: String(m.content) });
     }
 
+    // Get client (throws readable error if missing env or module)
+    const client = await getOpenAIClient();
+
+    // Stream
     const stream = await client.chat.completions.create({
       model,
       messages: chatMessages,
