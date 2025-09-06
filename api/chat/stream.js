@@ -1,11 +1,11 @@
 ﻿import OpenAI from "openai";
-
-// Explicit Node runtime (required for res.write on Vercel)
 export const config = { runtime: "nodejs" };
 
-// --- helpers ---
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-4o-mini";
+const TEMPERATURE = Number(process.env.CHAT_TEMPERATURE || "0.9");
+
 async function readJson(req) {
-  // Works whether req.body exists or not
   try {
     if (req.body !== undefined) {
       if (typeof req.body === "string") return JSON.parse(req.body || "{}");
@@ -15,9 +15,7 @@ async function readJson(req) {
     for await (const ch of req) chunks.push(ch);
     const raw = Buffer.concat(chunks).toString("utf8");
     return raw ? JSON.parse(raw) : {};
-  } catch (e) {
-    return {};
-  }
+  } catch { return {}; }
 }
 
 function sseHeaders(res) {
@@ -26,61 +24,58 @@ function sseHeaders(res) {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 }
-
-function sseWrite(res, obj) {
-  res.write(`data: ${JSON.stringify(obj)}\n\n`);
-}
-
-// --- handler ---
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-// if CHAT_MODEL is set, prefer it; otherwise fall back to a widely-available default
-const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-4o-mini";
+function sseWrite(res, obj) { res.write(\`data: \${JSON.stringify(obj)}\\n\\n\`); }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+  if (req.method !== "POST" && !(req.method === "GET" && req.query?.q)) {
+    res.setHeader("Allow", "POST, GET");
     return res.status(405).end("Method Not Allowed");
   }
 
-  // Always set SSE headers before doing work
   sseHeaders(res);
 
   try {
-    const body = await readJson(req);
-    const { messages = [], system, model } = body || {};
+    let body = {};
+    if (req.method === "POST") body = await readJson(req);
+
+    // Accept multiple shapes
+    const q = req.query?.q;
+    const prompt = body?.prompt || body?.text || (typeof body === "string" ? body : null) || q;
+    let messages = Array.isArray(body?.messages) ? body.messages : [];
+    if (!messages.length && prompt) {
+      messages = [{ role: "user", content: String(prompt) }];
+    }
+
+    const system = body?.system;
+    const model = body?.model || DEFAULT_MODEL;
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      sseWrite(res, { error: "Missing 'messages' array in JSON body." });
+      sseWrite(res, { error: "Missing 'messages' array or 'prompt'/'text'/'q'." });
       sseWrite(res, { done: true });
       return res.end();
     }
 
     const chatMessages = [];
     if (system) chatMessages.push({ role: "system", content: String(system) });
-    for (const m of messages) {
-      if (m && m.role && m.content != null) {
-        chatMessages.push({ role: String(m.role), content: String(m.content) });
-      }
+    for (const m of messages) if (m?.role && m?.content != null) {
+      chatMessages.push({ role: String(m.role), content: String(m.content) });
     }
 
     const stream = await client.chat.completions.create({
-      model: model || DEFAULT_MODEL,
+      model,
       messages: chatMessages,
       temperature: TEMPERATURE,
       stream: true,
-    });const TEMPERATURE = Number(process.env.CHAT_TEMPERATURE || "0.9");
-
+    });
 
     for await (const part of stream) {
       const delta = part?.choices?.[0]?.delta?.content || "";
       if (delta) sseWrite(res, { delta });
     }
-
     sseWrite(res, { done: true });
     res.end();
   } catch (err) {
     console.error("[/api/chat/stream] error:", err);
-    // Send error to the client over SSE so you actually see it
     try { sseWrite(res, { error: err?.message || "server_error" }); sseWrite(res, { done: true }); }
     finally { res.end(); }
   }
