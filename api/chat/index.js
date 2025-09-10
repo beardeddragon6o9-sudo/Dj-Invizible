@@ -155,8 +155,15 @@ export default async function handler(req, res) {
     try {
       const client = await getOpenAIClient();
       const systemPrompt =
-        `You are DJ Invizible's assistant. You can analyze questions and call tools to check availability or create a hold.
-Default time zone: ${DEFAULT_TZ}. Default calendar: ${DEFAULT_CAL}. When asked about scheduling or holds, prefer calling a tool.`
+  `You are DJ Invizible's assistant. You have access to TOOLS:
+  - check_availability(start, end, calendarId?, timeZone?)
+  - create_hold(start, end, summary?, description?, attendees?, calendarId?, timeZone?, ttlMinutes?)
+
+Rules:
+- When the user asks about schedules, availability, booking, or holds, you MUST call a tool with precise ISO datetimes in ${DEFAULT_TZ}.
+- If either start or end is missing, ask ONCE to clarify both in a single question, then call the tool.
+- Default calendar: ${DEFAULT_CAL}. Default time zone: ${DEFAULT_TZ}.
+- Keep answers concise and include a human-friendly time summary.`;
 
       const messages = [
         { role: "system", content: systemPrompt },
