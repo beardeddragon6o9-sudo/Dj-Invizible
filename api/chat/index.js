@@ -9,70 +9,108 @@ async function getOpenAIClient() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
-async function readJson(req) {
-  try {
-    if (req.body !== undefined) {
-      if (typeof req.body === "string") return JSON.parse(req.body || "{}");
-      if (typeof req.body === "object") return req.body || {};
-    }
-    const chunks = [];
-    for await (const ch of req) chunks.push(ch);
-    const raw = Buffer.concat(chunks).toString("utf8");
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
+async function readRaw(req) {
+  const chunks = [];
+  for await (const ch of req) chunks.push(ch);
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+async function readBody(req) {
+  // Try to honor what Vercel gives us, else parse raw
+  if (req.body !== undefined) {
+    if (typeof req.body === "string") return { raw: req.body, json: tryJSON(req.body), form: tryForm(req.body) };
+    if (typeof req.body === "object" && req.body !== null) return { raw: "", json: req.body, form: null };
   }
+  const raw = await readRaw(req);
+  return { raw, json: tryJSON(raw), form: tryForm(raw) };
+}
+
+function tryJSON(s) { try { return s ? JSON.parse(s) : null; } catch { return null; } }
+function tryForm(s) {
+  try {
+    if (!s || s.indexOf("=") === -1) return null;
+    const params = new URLSearchParams(s);
+    const obj = {};
+    for (const [k,v] of params.entries()) obj[k] = v;
+    return obj;
+  } catch { return null; }
+}
+
+function extractMessages({ json, form, raw, q }) {
+  // Accept LOTS of keys so legacy code "just works"
+  const pick = (o, keys) => o ? keys.map(k => o[k]).find(v => v != null && v !== "") : null;
+
+  // 1) If messages array present, use it
+  let messages = Array.isArray(json?.messages) ? json.messages : null;
+
+  // 2) Otherwise, build a single-user message from any reasonable key
+  const prompt =
+    q ||
+    pick(json, ["prompt","text","message","msg","input","content","q","query"]) ||
+    pick(form, ["prompt","text","message","msg","input","content","q","query"]) ||
+    (typeof json === "string" ? json : null) ||
+    (raw && raw.trim().startsWith("{") ? null : raw); // bare text
+
+  if (!messages && prompt) {
+    messages = [{ role: "user", content: String(prompt) }];
+  }
+
+  return messages || [];
 }
 
 export default async function handler(req, res) {
+  if (req.method === "GET") {
+    // allow simple GET test: /api/chat?q=hello
+    const q = req.query?.q;
+    if (!q) return res.status(405).json({ ok:false, error:"method_not_allowed" });
+    return respond({ res, messages: [{ role:"user", content:String(q) }] });
+  }
+
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).json({ ok: false, error: "method_not_allowed" });
+    res.setHeader("Allow","POST, GET");
+    return res.status(405).json({ ok:false, error:"method_not_allowed" });
   }
 
   try {
-    const body = await readJson(req);
+    const { json, form, raw } = await readBody(req);
+    const messages = extractMessages({ json, form, raw, q: req.query?.q });
 
-    // Accept multiple shapes: {messages}, {prompt}, {text}, bare string
-    let messages = Array.isArray(body?.messages) ? body.messages : [];
-    const prompt = body?.prompt || body?.text || (typeof body === "string" ? body : null);
-
-    if (!messages.length && prompt) {
-      messages = [{ role: "user", content: String(prompt) }];
-    }
     if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ ok: false, error: "Missing 'messages' array or 'prompt'/'text'." });
+      return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt (prompt/text/message/msg/input/content/q)." });
     }
 
-    const system = body?.system;
-    const model  = body?.model || DEFAULT_MODEL;
+    return respond({ res, messages, system: json?.system, model: json?.model });
+  } catch (err) {
+    console.error("[/api/chat] parse error:", err);
+    return res.status(500).json({ ok:false, error: err?.message || "server_error" });
+  }
+}
 
-    const chatMessages = [];
-    if (system) chatMessages.push({ role: "system", content: String(system) });
-    for (const m of messages) {
-      if (m?.role && m?.content != null) {
-        chatMessages.push({ role: String(m.role), content: String(m.content) });
-      }
-    }
-
+async function respond({ res, messages, system, model }) {
+  try {
     const client = await getOpenAIClient();
 
+    const chatMessages = [];
+    if (system) chatMessages.push({ role:"system", content:String(system) });
+    for (const m of messages) if (m?.role && m?.content != null) {
+      chatMessages.push({ role:String(m.role), content:String(m.content) });
+    }
+
     const completion = await client.chat.completions.create({
-      model,
+      model: model || DEFAULT_MODEL,
       messages: chatMessages,
       temperature: TEMPERATURE,
     });
 
-    const reply = completion.choices?.[0]?.message?.content ?? "";
-    // Return a generous shape so your legacy code can pick any of these:
+    const content = completion.choices?.[0]?.message?.content ?? "";
     return res.status(200).json({
       ok: true,
-      text: reply,
-      content: reply,
-      reply: { role: "assistant", content: reply },
+      text: content,
+      content,
+      reply: { role:"assistant", content },
     });
   } catch (err) {
-    console.error("[/api/chat] error:", err);
-    return res.status(500).json({ ok: false, error: err?.message || "server_error" });
+    console.error("[/api/chat] openai error:", err);
+    return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }

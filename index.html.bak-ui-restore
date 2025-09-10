@@ -70,13 +70,11 @@
   </div>
 
   <script src="assets/js/script.js" defer></script>
-
-
+<!-- removed legacy chat script include -->
+<!-- removed legacy chat script include -->
 <script type="module" src="/assets/chat-stream.js"></script>
-<script src="/assets/script.js"></script>
 </body>
 </html>
-
 
 
 
