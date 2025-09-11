@@ -5,11 +5,7 @@ function origin(req) {
   return h.startsWith("http") ? h : `https://${h}`;
 }
 async function postJSON(url, body) {
-  const r = await fetch(url, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(body)
-  });
+  const r = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) });
   const text = await r.text();
   let data; try { data = JSON.parse(text); } catch { data = { raw: text } }
   return { ok: r.ok, status: r.status, data };
@@ -22,10 +18,11 @@ export default async function handler(req, res) {
     const now = new Date();
     const start = new Date(now.getTime() + 5*60*1000);
     const end   = new Date(now.getTime() + 15*60*1000);
+    const toISO = (d) => d.toISOString(); // server will handle tz
 
     const probe = await postJSON(`${origin(req)}/api/availability`, {
-      start: start.toISOString(),
-      end:   end.toISOString(),
+      start: toISO(start),
+      end: toISO(end),
       timeZone: tz,
       calendarId: cal
     });
