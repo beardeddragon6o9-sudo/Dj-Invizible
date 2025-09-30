@@ -54,48 +54,10 @@ const TZ_ALIASES = {
 function normalizeTz(input) {
   const def = DEFAULT_TZ;
   if (!input || typeof input !== "string") return def;
-
-  const s = input.trim();
-  const sl = s.toLowerCase();
-
-  // Canonical map for common zones we use
-  const CANON = {
-    "america/vancouver": "America/Vancouver",
-    "america/los_angeles": "America/Los_Angeles"
-  };
-
-  // Known aliases to IANA (case-insensitive)
-  const ALIAS = {
-    "vancouver": "America/Vancouver",
-    "vancouver time": "America/Vancouver",
-    "pacific": "America/Los_Angeles",
-    "pacific time": "America/Los_Angeles",
-    "pst": "America/Los_Angeles",
-    "pdt": "America/Los_Angeles",
-    "los angeles": "America/Los_Angeles",
-    "la": "America/Los_Angeles",
-    "pt": "America/Los_Angeles"
-  };
-
-  if (ALIAS[sl]) return ALIAS[sl];
-
-  // If it looks like IANA, canonicalize common ones; otherwise fall back
-  if (/^[A-Za-z_]+\/[A-Za-z_]+(?:\/[A-Za-z_]+)?$/.test(s)) {
-    if (CANON[sl]) return CANON[sl];
-    // Title-case simple IANA guesses: Region/City
-    const parts = sl.split("/");
-    const cap = (t) => t.replace(/\b[a-z]/g, (m)=>m.toUpperCase()).replace(/_/g, "_");
-    return parts.length >= 2 ? `${cap(parts[0])}/${cap(parts[1])}${parts[2]?`/${cap(parts[2])}`:""}` : def;
-  }
-
-  // Offsets like -07:00 → use default zone (datetimes already carry offset)
-  if (/^[+-]\d{2}:?\d{2}$/.test(sl)) return def;
-
-  // Fallbacks by keywords
-  if (sl.includes("vancouver")) return "America/Vancouver";
-  if (sl.includes("pacific")) return "America/Los_Angeles";
-  return def;
-}:?\d{2}$/.test(s)) return def; // offset given → use default IANA
+  const s = input.trim().toLowerCase();
+  if (TZ_ALIASES[s]) return TZ_ALIASES[s];
+  if (/^[A-Za-z_]+\/[A-Za-z_]+(?:\/[A-Za-z_]+)?$/.test(input)) return input; // IANA
+  if (/^[+-]\d{2}:?\d{2}$/.test(s)) return def; // offset given → use default IANA
   if (s.includes("vancouver")) return "America/Vancouver";
   if (s.includes("pacific")) return "America/Los_Angeles";
   return def;
@@ -336,5 +298,4 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
 
