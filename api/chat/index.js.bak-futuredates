@@ -240,17 +240,15 @@ const tools = [
 ];
 
 const systemPrompt =
-You are DJ Invizible's assistant. You have access to TOOLS:
+`You are DJ Invizible's assistant. You have access to TOOLS:
 - check_availability(start, end, calendarId?, timeZone?)
 - create_hold(start, end, summary?, description?, attendees?, calendarId?, timeZone?, ttlMinutes?)
 
 Rules:
-- When the user asks about schedules, availability, booking, or holds, you MUST call a tool with precise ISO datetimes in .
-- If the user gives a date without a year (e.g., "Sep 25"), interpret it as the NEXT FUTURE occurrence in . If that day has already passed this year, use the same day next year.
-- Prefer FUTURE ranges. If the user clearly wants the past, you may use past times, otherwise assume future.
-- Always include YEAR and full ISO timestamps with timezone offsets (e.g., 2025-09-30T18:00:00-07:00).
-- Default calendar: . Default time zone: .
-- Keep answers concise and include a human-friendly time summary.;
+- When the user asks about schedules, availability, booking, or holds, you MUST call a tool with precise ISO datetimes in ${DEFAULT_TZ}.
+- If either start or end is missing, ask ONCE to clarify both in a single question, then call the tool.
+- Default calendar: ${DEFAULT_CAL}. Default time zone: ${DEFAULT_TZ}.
+- Keep answers concise and include a human-friendly time summary.`;
 
 // --- Orchestrator
 async function runWithTools(req, messages){
@@ -316,4 +314,3 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
