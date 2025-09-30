@@ -239,7 +239,7 @@ const tools = [
   }},
 ];
 
-const systemPrompt =
+const systemPrompt = `
 You are DJ Invizible's assistant. You have access to TOOLS:
 - check_availability(start, end, calendarId?, timeZone?)
 - create_hold(start, end, summary?, description?, attendees?, calendarId?, timeZone?, ttlMinutes?)
@@ -250,7 +250,8 @@ Rules:
 - Prefer FUTURE ranges. If the user clearly wants the past, you may use past times, otherwise assume future.
 - Always include YEAR and full ISO timestamps with timezone offsets (e.g., 2025-09-30T18:00:00-07:00).
 - Default calendar: . Default time zone: .
-- Keep answers concise and include a human-friendly time summary.;
+- Keep answers concise and include a human-friendly time summary.
+`;
 
 // --- Orchestrator
 async function runWithTools(req, messages){
