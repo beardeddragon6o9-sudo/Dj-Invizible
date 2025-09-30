@@ -42,7 +42,9 @@ async function readBody(req){
 function extractMessages(body, q){
   let messages = Array.isArray(body?.messages) ? body.messages : null;
   const prompt = q || body?.prompt || body?.text || body?.message || body?.input || body?.content || null;
-  if (!messages && prompt) messages = [{ role:"user", content:String(prompt) }
+  if (!messages && prompt) messages = [{ role:"user", content:String(prompt) }];
+  return messages || [];
+}
 
 // --- normalize timeZone to an IANA value (e.g., "America/Vancouver")
 const TZ_ALIASES = {
@@ -68,9 +70,6 @@ function normalizeTz(input) {
   if (s.includes("vancouver")) return "America/Vancouver";
   if (s.includes("pacific")) return "America/Los_Angeles";
   return def;
-}
-];
-  return messages || [];
 }
 async function postJSON(url, body, headers = {}) {
   const r = await fetch(url, {
