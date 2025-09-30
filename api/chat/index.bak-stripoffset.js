@@ -64,12 +64,6 @@ function normalizeTz(input) {
 }
 
 // --- Google fallback
-function stripOffsetISO(iso) {
-  if (!iso || typeof iso !== "string") return iso;
-  // remove trailing Z or ±HH:MM
-  return iso.replace(/(Z|[+-]\d{2}:\d{2})$/, "");
-}
-
 async function getGoogleAccessToken(){
   const client_id = process.env.GOOGLE_CLIENT_ID;
   const client_secret = process.env.GOOGLE_CLIENT_SECRET;
@@ -117,7 +111,8 @@ async function googleCreateHold({ start, end, timeZone, calendarId, summary, des
   const reqBody = {
     summary: summary || "DJ hold",
     description: description || "",
-    start: { dateTime: stripOffsetISO(start), timeZone: tz }, end: { dateTime: stripOffsetISO(end), timeZone: tz },
+    start: { dateTime: start, timeZone: tz },
+    end:   { dateTime: end,   timeZone: tz },
     attendees: Array.isArray(attendees) ? attendees.map(e=>({ email:String(e) })) : [],
     transparency: "opaque",
     status: "tentative",
@@ -298,4 +293,3 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
