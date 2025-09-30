@@ -94,37 +94,31 @@ function formatFromHold(result, args){
 
 async function execTool(req, name, args){
   const base = origin(req);
-
-  // Send common auth headers if a secret is set (matches your endpoints)
-  const authHeaders = {};
-  if (AUTH_SECRET) {
-    authHeaders.Authorization    = `Bearer ${AUTH_SECRET}`;
-    authHeaders["x-cron-secret"] = AUTH_SECRET;
-    authHeaders["x-api-key"]     = AUTH_SECRET;
-  }
-
-  if (name === "check_availability") {
+  if (name==="check_availability"){
     return await postJSON(`${base}/api/availability`, {
-      start: args.start,
-      end: args.end,
+      start: args.start, end: args.end,
       timeZone: args.timeZone || DEFAULT_TZ,
       calendarId: args.calendarId || DEFAULT_CAL
-    }, authHeaders);  // now sends headers
+    });
   }
-
-  if (name === "create_hold") {
+  if (name==="create_hold"){
+    // Send several header variants to satisfy whatever your hold handler expects
+    const headers = {};
+    if (AUTH_SECRET) {
+      headers.Authorization   = `Bearer ${AUTH_SECRET}`;
+      headers["x-cron-secret"]= AUTH_SECRET;
+      headers["x-api-key"]    = AUTH_SECRET;
+    }
     return await postJSON(`${base}/api/hold`, {
-      start: args.start,
-      end: args.end,
+      start: args.start, end: args.end,
       timeZone: args.timeZone || DEFAULT_TZ,
       calendarId: args.calendarId || DEFAULT_CAL,
       summary: args.summary || "DJ hold",
       description: args.description || "",
       attendees: Array.isArray(args.attendees) ? args.attendees : [],
       ttlMinutes: Number(args.ttlMinutes || HOLD_TTL_MIN)
-    }, authHeaders);
+    }, headers);
   }
-
   return { ok:false, error:`Unknown tool: ${name}` };
 }
 
@@ -205,4 +199,3 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
