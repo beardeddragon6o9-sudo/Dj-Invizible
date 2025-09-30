@@ -7,12 +7,14 @@ const DEFAULT_CAL   = process.env.GOOGLE_CALENDAR_ID || "primary";
 const HOLD_TTL_MIN  = Number(process.env.HOLD_TTL_MINUTES || "60");
 const AUTH_SECRET   = process.env.SWEEP_SECRET || process.env.API_SECRET || "";
 
+// ---- OpenAI client
 async function getOpenAIClient() {
   if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not set");
   const { default: OpenAI } = await import("openai");
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
+// ---- Body helpers
 async function readRaw(req){ const chunks=[]; for await (const ch of req) chunks.push(ch); return Buffer.concat(chunks).toString("utf8"); }
 function tryJSON(s){ try{ return s?JSON.parse(s):null } catch { return null } }
 async function readBody(req){
@@ -30,6 +32,7 @@ function extractMessages(body, q){
   return messages || [];
 }
 
+// ---- Tools description for the model
 const tools = [
   { type:"function", function:{
       name:"check_availability",
@@ -55,6 +58,7 @@ const tools = [
   }},
 ];
 
+// ---- Local endpoint posting
 function origin(req){ const h = process.env.VERCEL_URL || req.headers.host; return h.startsWith("http")?h:`https://${h}`; }
 async function postJSON(url, body, headers={}){
   const r = await fetch(url,{ method:"POST", headers:{ "Content-Type":"application/json", ...headers }, body:JSON.stringify(body) });
@@ -62,11 +66,83 @@ async function postJSON(url, body, headers={}){
   return { httpOk:r.ok, status:r.status, ...((typeof data==='object'&&data)?data:{}) };
 }
 
-function prettifyRange(startISO, endISO, tz){
-  // Keep it simple & robust (string as given)
-  return `${startISO} → ${endISO} (${tz})`;
+// ---- Google API fallback (uses refresh token)
+async function getGoogleAccessToken(){
+  const client_id = process.env.GOOGLE_CLIENT_ID;
+  const client_secret = process.env.GOOGLE_CLIENT_SECRET;
+  const refresh_token = process.env.GOOGLE_REFRESH_TOKEN;
+  if (!client_id || !client_secret || !refresh_token) throw new Error("Missing Google OAuth envs");
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method:"POST",
+    headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type:"refresh_token",
+      client_id, client_secret, refresh_token
+    })
+  });
+  const js = await r.json();
+  if (!r.ok || !js.access_token) throw new Error(js.error || "token_refresh_failed");
+  return js.access_token;
 }
 
+async function googleCheckAvailability({ start, end, timeZone, calendarId }){
+  const token = await getGoogleAccessToken();
+  const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+    body: JSON.stringify({
+      timeMin: start,
+      timeMax: end,
+      timeZone: timeZone || DEFAULT_TZ,
+      items: [ { id: calendarId || DEFAULT_CAL } ]
+    })
+  });
+  const js = await r.json();
+  if (!r.ok) return { httpOk:false, status:r.status, error: js.error?.message || "google_freebusy_failed", raw: js };
+  const calId = calendarId || DEFAULT_CAL;
+  const busy = (js.calendars?.[calId]?.busy) || [];
+  return { ok:true, calendarId: calId, timeZone: timeZone || DEFAULT_TZ, busy, available: busy.length===0 };
+}
+
+async function googleCreateHold({ start, end, timeZone, calendarId, summary, description, attendees, ttlMinutes }){
+  const token = await getGoogleAccessToken();
+  const calId = calendarId || DEFAULT_CAL;
+  const reqBody = {
+    summary: summary || "DJ hold",
+    description: description || "",
+    start: { dateTime: start, timeZone: timeZone || DEFAULT_TZ },
+    end:   { dateTime: end,   timeZone: timeZone || DEFAULT_TZ },
+    attendees: Array.isArray(attendees) ? attendees.map(e => ({ email:String(e) })) : [],
+    transparency: "opaque",
+    status: "tentative",
+    extendedProperties: {
+      private: {
+        hold: "true",
+        autoCancelAt: new Date(Date.now() + (Number(ttlMinutes||HOLD_TTL_MIN)*60*1000)).toISOString(),
+        createdAt: new Date().toISOString()
+      }
+    }
+  };
+  const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?sendUpdates=none`, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+    body: JSON.stringify(reqBody)
+  });
+  const js = await r.json();
+  if (!r.ok) return { httpOk:false, status:r.status, error: js.error?.message || "google_events_insert_failed", raw: js };
+  return {
+    ok:true,
+    id: js.id,
+    calendarId: calId,
+    htmlLink: js.htmlLink,
+    start: js.start,
+    end: js.end,
+    status: js.status
+  };
+}
+
+// ---- Formatting for final reply
+function prettifyRange(startISO, endISO, tz){ return `${startISO} → ${endISO} (${tz})`; }
 function formatFromAvailability(result, args){
   if (!result || result.ok === false || result.httpOk === false) {
     const msg = result?.error || `HTTP ${result?.status||"??"}`;
@@ -79,7 +155,6 @@ function formatFromAvailability(result, args){
   const blocks = Array.isArray(result.busy) ? result.busy.map(b => `${b.start || "?"}–${b.end || "?"}`).join(", ") : "unknown";
   return `You're **BUSY** for ${human}. Busy blocks: ${blocks}.`;
 }
-
 function formatFromHold(result, args){
   if (!result || result.ok === false || result.httpOk === false) {
     const msg = result?.error || `HTTP ${result?.status||"??"}`;
@@ -92,33 +167,42 @@ function formatFromHold(result, args){
   return `✅ Hold created for ${human}${link ? ` — link: ${link}` : ""}${id ? ` (id: ${id})` : ""}.`;
 }
 
+// ---- Exec tools: try local endpoints first, then Google fallback on 401/404
 async function execTool(req, name, args){
   const base = origin(req);
 
-  // Common auth headers
+  // common auth headers + ?secret= for your endpoints
   const authHeaders = {};
   if (AUTH_SECRET) {
     authHeaders.Authorization    = `Bearer ${AUTH_SECRET}`;
     authHeaders["x-cron-secret"] = AUTH_SECRET;
     authHeaders["x-api-key"]     = AUTH_SECRET;
   }
-
-  // ALSO pass ?secret=... for routes that only read query
   const qs = AUTH_SECRET ? `?secret=${encodeURIComponent(AUTH_SECRET)}` : "";
 
   if (name === "check_availability") {
-    return await postJSON(`${base}/api/availability${qs}`, {
-      start: args.start,
-      end: args.end,
+    // local
+    const local = await postJSON(`${base}/api/availability${qs}`, {
+      start: args.start, end: args.end,
       timeZone: args.timeZone || DEFAULT_TZ,
       calendarId: args.calendarId || DEFAULT_CAL
     }, authHeaders);
+
+    // fallback to Google on 401/404
+    if (local.status === 401 || local.status === 404) {
+      const direct = await googleCheckAvailability({
+        start: args.start, end: args.end,
+        timeZone: args.timeZone || DEFAULT_TZ,
+        calendarId: args.calendarId || DEFAULT_CAL
+      });
+      return direct;
+    }
+    return local;
   }
 
   if (name === "create_hold") {
-    return await postJSON(`${base}/api/hold${qs}`, {
-      start: args.start,
-      end: args.end,
+    const local = await postJSON(`${base}/api/hold${qs}`, {
+      start: args.start, end: args.end,
       timeZone: args.timeZone || DEFAULT_TZ,
       calendarId: args.calendarId || DEFAULT_CAL,
       summary: args.summary || "DJ hold",
@@ -126,11 +210,24 @@ async function execTool(req, name, args){
       attendees: Array.isArray(args.attendees) ? args.attendees : [],
       ttlMinutes: Number(args.ttlMinutes || HOLD_TTL_MIN)
     }, authHeaders);
+
+    if (local.status === 401 || local.status === 404) {
+      const direct = await googleCreateHold({
+        start: args.start, end: args.end,
+        timeZone: args.timeZone || DEFAULT_TZ,
+        calendarId: args.calendarId || DEFAULT_CAL,
+        summary: args.summary, description: args.description,
+        attendees: args.attendees, ttlMinutes: args.ttlMinutes
+      });
+      return direct;
+    }
+    return local;
   }
 
   return { ok:false, error:`Unknown tool: ${name}` };
 }
 
+// ---- System prompt encouraging tool use
 const systemPrompt =
 `You are DJ Invizible's assistant. You have access to TOOLS:
 - check_availability(start, end, calendarId?, timeZone?)
@@ -142,48 +239,44 @@ Rules:
 - Default calendar: ${DEFAULT_CAL}. Default time zone: ${DEFAULT_TZ}.
 - Keep answers concise and include a human-friendly time summary.`;
 
+// ---- Orchestrator
+async function runWithTools(req, messages){
+  const client = await getOpenAIClient();
+  const first = await client.chat.completions.create({
+    model: DEFAULT_MODEL, temperature: TEMPERATURE,
+    messages: [{role:"system", content: systemPrompt}, ...messages],
+    tools, tool_choice: "auto"
+  });
+
+  const tcAll = first.choices?.[0]?.message?.tool_calls || [];
+  if (!tcAll.length) {
+    const content = first.choices?.[0]?.message?.content ?? "";
+    return { content, toolResults: [] };
+  }
+
+  const results=[];
+  for (const tc of tcAll){
+    const args = JSON.parse(tc.function.arguments||"{}");
+    const tr   = await execTool(req, tc.function.name, args);
+    results.push({ name: tc.function.name, args, result: tr });
+  }
+
+  let content = "";
+  for (const r of results){
+    if (r.name === "check_availability") content += (content ? "\n" : "") + formatFromAvailability(r.result, r.args);
+    if (r.name === "create_hold")        content += (content ? "\n" : "") + formatFromHold(r.result, r.args);
+  }
+  if (!content) content = "Done.";
+
+  return { content, toolResults: results };
+}
+
 export default async function handler(req, res){
   const method = req.method || "GET";
 
-  const runWithTools = async (messages) => {
-    const client = await getOpenAIClient();
-    const first = await client.chat.completions.create({
-      model: DEFAULT_MODEL, temperature: TEMPERATURE,
-      messages: [{role:"system", content: systemPrompt}, ...messages],
-      tools, tool_choice: "auto"
-    });
-
-    const tcAll = first.choices?.[0]?.message?.tool_calls || [];
-    if (!tcAll.length) {
-      const content = first.choices?.[0]?.message?.content ?? "";
-      return { content, toolResults: [] };
-    }
-
-    // Execute tool(s)
-    const toolMsgs=[]; const results=[];
-    for (const tc of tcAll){
-      const args = JSON.parse(tc.function.arguments||"{}");
-      const tr   = await execTool(req, tc.function.name, args);
-      results.push({ name: tc.function.name, args, result: tr });
-      toolMsgs.push({ role:"assistant", tool_calls:[tc] });
-      toolMsgs.push({ role:"tool", tool_call_id: tc.id, name: tc.function.name, content: JSON.stringify(tr) });
-    }
-
-    // Deterministic, server-crafted final message (skip model if tools ran)
-    // We generate a concise answer directly from toolResults:
-    let content = "";
-    for (const r of results){
-      if (r.name === "check_availability") content += (content ? "\n" : "") + formatFromAvailability(r.result, r.args);
-      if (r.name === "create_hold")        content += (content ? "\n" : "") + formatFromHold(r.result, r.args);
-    }
-    if (!content) content = "Done.";
-
-    return { content, toolResults: results };
-  };
-
   if (method === "GET" && req.query?.q) {
     try {
-      const out = await runWithTools([{ role:"user", content: String(req.query.q) }]);
+      const out = await runWithTools(req, [{ role:"user", content: String(req.query.q) }]);
       return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content}, toolResults: out.toolResults });
     } catch (err) {
       return res.status(500).json({ ok:false, error: err?.message || "server_error" });
@@ -201,12 +294,9 @@ export default async function handler(req, res){
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
     }
-
-    const out = await runWithTools(messages);
+    const out = await runWithTools(req, messages);
     return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content}, toolResults: out.toolResults });
   } catch (err) {
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
-
