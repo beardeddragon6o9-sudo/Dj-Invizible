@@ -46,11 +46,17 @@ async function postJSON(url, body, headers = {}) {
 
 // --- normalize timeZone to IANA (force to DEFAULT_TZ if unclear)
 const TZ_ALIASES = {
-  "vancouver":"America/Vancouver", "vancouver time":"America/Vancouver",
-  "pacific":"America/Los_Angeles", "pacific time":"America/Los_Angeles",
-  "pst":"America/Los_Angeles", "pdt":"America/Los_Angeles",
-  "los angeles":"America/Los_Angeles", "la":"America/Los_Angeles", "pt":"America/Los_Angeles"
+  "vancouver": "America/Vancouver",
+  "vancouver time": "America/Vancouver",
+  "pacific": "America/Los_Angeles",
+  "pacific time": "America/Los_Angeles",
+  "pst": "America/Los_Angeles",
+  "pdt": "America/Los_Angeles",
+  "los angeles": "America/Los_Angeles",
+  "la": "America/Los_Angeles",
+  "pt": "America/Los_Angeles"
 };
+
 function normalizeTz(input) {
   const def = DEFAULT_TZ;
   if (!input || typeof input !== "string") return def;
@@ -64,20 +70,8 @@ function normalizeTz(input) {
     "america/los_angeles": "America/Los_Angeles"
   };
 
-  // Known aliases to IANA (case-insensitive)
-  const ALIAS = {
-    "vancouver": "America/Vancouver",
-    "vancouver time": "America/Vancouver",
-    "pacific": "America/Los_Angeles",
-    "pacific time": "America/Los_Angeles",
-    "pst": "America/Los_Angeles",
-    "pdt": "America/Los_Angeles",
-    "los angeles": "America/Los_Angeles",
-    "la": "America/Los_Angeles",
-    "pt": "America/Los_Angeles"
-  };
-
-  if (ALIAS[sl]) return ALIAS[sl];
+  // Use consolidated alias map
+  if (TZ_ALIASES[sl]) return TZ_ALIASES[sl];
 
   // If it looks like IANA, canonicalize common ones; otherwise fall back
   if (/^[A-Za-z_]+\/[A-Za-z_]+(?:\/[A-Za-z_]+)?$/.test(s)) {
@@ -94,10 +88,6 @@ function normalizeTz(input) {
   // Fallbacks by keywords
   if (sl.includes("vancouver")) return "America/Vancouver";
   if (sl.includes("pacific")) return "America/Los_Angeles";
-  return def;
-}:?\d{2}$/.test(s)) return def; // offset given → use default IANA
-  if (s.includes("vancouver")) return "America/Vancouver";
-  if (s.includes("pacific")) return "America/Los_Angeles";
   return def;
 }
 
