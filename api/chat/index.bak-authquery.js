@@ -95,7 +95,7 @@ function formatFromHold(result, args){
 async function execTool(req, name, args){
   const base = origin(req);
 
-  // Common auth headers
+  // Send common auth headers if a secret is set (matches your endpoints)
   const authHeaders = {};
   if (AUTH_SECRET) {
     authHeaders.Authorization    = `Bearer ${AUTH_SECRET}`;
@@ -103,20 +103,17 @@ async function execTool(req, name, args){
     authHeaders["x-api-key"]     = AUTH_SECRET;
   }
 
-  // ALSO pass ?secret=... for routes that only read query
-  const qs = AUTH_SECRET ? `?secret=${encodeURIComponent(AUTH_SECRET)}` : "";
-
   if (name === "check_availability") {
-    return await postJSON(`${base}/api/availability${qs}`, {
+    return await postJSON(`${base}/api/availability`, {
       start: args.start,
       end: args.end,
       timeZone: args.timeZone || DEFAULT_TZ,
       calendarId: args.calendarId || DEFAULT_CAL
-    }, authHeaders);
+    }, authHeaders);  // now sends headers
   }
 
   if (name === "create_hold") {
-    return await postJSON(`${base}/api/hold${qs}`, {
+    return await postJSON(`${base}/api/hold`, {
       start: args.start,
       end: args.end,
       timeZone: args.timeZone || DEFAULT_TZ,
@@ -208,5 +205,4 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
 
