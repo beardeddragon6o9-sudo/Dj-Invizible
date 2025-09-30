@@ -1,7 +1,7 @@
 ﻿export const config = { runtime: "nodejs" };
 
 const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5-mini";
-const TEMPERATURE   = Number(process.env.CHAT_TEMPERATURE || "0.7");
+const TEMPERATURE   = Number(process.env.CHAT_TEMPERATURE || "1");
 const DEFAULT_TZ    = process.env.TIME_ZONE || "America/Vancouver";
 const DEFAULT_CAL   = process.env.GOOGLE_CALENDAR_ID || "primary";
 const HOLD_TTL_MIN  = Number(process.env.HOLD_TTL_MINUTES || "60");
