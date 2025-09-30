@@ -92,33 +92,9 @@ async function getGoogleAccessToken(){
 
 async function googleCheckAvailability({ start, end, timeZone, calendarId }){
   const token = await getGoogleAccessToken();
-  // Resolve "primary" to an actual calendar id using calendarList
-  let calId = calendarId || DEFAULT_CAL;
-  if (calId === "primary") {
-    const list = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
-      headers: { Authorization:`Bearer ${token}` }
-    });
-    const js = await list.json();
-    if (list.ok && Array.isArray(js.items)) {
-      const primary = js.items.find(i => i.primary) || js.items.find(i => i.accessRole === "owner") || js.items[0];
-      if (primary?.id) calId = primary.id;
-    }
-  }
   const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
     method:"POST",
     headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
-    body: JSON.stringify({
-      timeMin: start,
-      timeMax: end,
-      timeZone: timeZone || DEFAULT_TZ,
-      items: [ { id: calId } ]
-    })
-  });
-  const js = await r.json();
-  if (!r.ok) return { httpOk:false, status:r.status, error: js.error?.message || "google_freebusy_failed", raw: js };
-  const busy = (js.calendars?.[calId]?.busy) || [];
-  return { ok:true, calendarId: calId, timeZone: timeZone || DEFAULT_TZ, busy, available: busy.length===0 };
-}` },
     body: JSON.stringify({
       timeMin: start,
       timeMax: end,
@@ -135,42 +111,11 @@ async function googleCheckAvailability({ start, end, timeZone, calendarId }){
 
 async function googleCreateHold({ start, end, timeZone, calendarId, summary, description, attendees, ttlMinutes }){
   const token = await getGoogleAccessToken();
-  let calId = calendarId || DEFAULT_CAL;
-  if (calId === "primary") {
-    const list = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
-      headers: { Authorization:`Bearer ${token}` }
-    });
-    const js = await list.json();
-    if (list.ok && Array.isArray(js.items)) {
-      const primary = js.items.find(i => i.primary) || js.items.find(i => i.accessRole === "owner") || js.items[0];
-      if (primary?.id) calId = primary.id;
-    }
-  }
+  const calId = calendarId || DEFAULT_CAL;
   const reqBody = {
     summary: summary || "DJ hold",
     description: description || "",
     start: { dateTime: start, timeZone: timeZone || DEFAULT_TZ },
-    end:   { dateTime: end,   timeZone: timeZone || DEFAULT_TZ },
-    attendees: Array.isArray(attendees) ? attendees.map(e => ({ email:String(e) })) : [],
-    transparency: "opaque",
-    status: "tentative",
-    extendedProperties: {
-      private: {
-        hold: "true",
-        autoCancelAt: new Date(Date.now() + (Number(ttlMinutes||HOLD_TTL_MIN)*60*1000)).toISOString(),
-        createdAt: new Date().toISOString()
-      }
-    }
-  };
-  const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?sendUpdates=none`, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
-    body: JSON.stringify(reqBody)
-  });
-  const js = await r.json();
-  if (!r.ok) return { httpOk:false, status:r.status, error: js.error?.message || "google_events_insert_failed", raw: js };
-  return { ok:true, id: js.id, calendarId: calId, htmlLink: js.htmlLink, start: js.start, end: js.end, status: js.status };
-},
     end:   { dateTime: end,   timeZone: timeZone || DEFAULT_TZ },
     attendees: Array.isArray(attendees) ? attendees.map(e => ({ email:String(e) })) : [],
     transparency: "opaque",
@@ -249,7 +194,7 @@ async function execTool(req, name, args){
     }, authHeaders);
 
     // fallback to Google on 401/404
-    if (!local.httpOk || (typeof local.status==="number" && local.status>=400) || local.ok===false) {
+    if (local.status === 401 || local.status === 404) {
       const direct = await googleCheckAvailability({
         start: args.start, end: args.end,
         timeZone: args.timeZone || DEFAULT_TZ,
@@ -271,7 +216,7 @@ async function execTool(req, name, args){
       ttlMinutes: Number(args.ttlMinutes || HOLD_TTL_MIN)
     }, authHeaders);
 
-    if (!local.httpOk || (typeof local.status==="number" && local.status>=400) || local.ok===false) {
+    if (local.status === 401 || local.status === 404) {
       const direct = await googleCreateHold({
         start: args.start, end: args.end,
         timeZone: args.timeZone || DEFAULT_TZ,
@@ -360,7 +305,6 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
 
 
 
