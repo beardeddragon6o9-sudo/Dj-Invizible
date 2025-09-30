@@ -42,34 +42,7 @@ async function readBody(req){
 function extractMessages(body, q){
   let messages = Array.isArray(body?.messages) ? body.messages : null;
   const prompt = q || body?.prompt || body?.text || body?.message || body?.input || body?.content || null;
-  if (!messages && prompt) messages = [{ role:"user", content:String(prompt) }
-
-// --- normalize timeZone to an IANA value (e.g., "America/Vancouver")
-const TZ_ALIASES = {
-  "vancouver":"America/Vancouver",
-  "vancouver time":"America/Vancouver",
-  "pacific":"America/Los_Angeles",
-  "pacific time":"America/Los_Angeles",
-  "pst":"America/Los_Angeles",
-  "pdt":"America/Los_Angeles",
-  "los angeles":"America/Los_Angeles",
-  "la":"America/Los_Angeles",
-  "pt":"America/Los_Angeles"
-};
-function normalizeTz(input) {
-  const def = DEFAULT_TZ;
-  if (!input || typeof input !== "string") return def;
-  const s = input.trim().toLowerCase();
-  if (TZ_ALIASES[s]) return TZ_ALIASES[s];
-  // Looks like a valid IANA zone?
-  if (/^[A-Za-z_]+\/[A-Za-z_]+(?:\/[A-Za-z_]+)?$/.test(input)) return input;
-  // Offsets like -07:00 → just use default zone; the datetimes already carry the offset
-  if (/^[+-]\d{2}:?\d{2}$/.test(s)) return def;
-  if (s.includes("vancouver")) return "America/Vancouver";
-  if (s.includes("pacific")) return "America/Los_Angeles";
-  return def;
-}
-];
+  if (!messages && prompt) messages = [{ role:"user", content:String(prompt) }];
   return messages || [];
 }
 async function postJSON(url, body, headers = {}) {
@@ -123,14 +96,14 @@ async function googleCheckAvailability({ start, end, timeZone, calendarId }){
     body: JSON.stringify({
       timeMin: start,
       timeMax: end,
-      timeZone: normalizeTz(timeZone),
+      timeZone: timeZone || DEFAULT_TZ,
       items: [ { id: calId } ]
     })
   });
   const js = await r.json();
   if (!r.ok) return { httpOk:false, status:r.status, error: js.error?.message || "google_freebusy_failed", raw: js };
   const busy = (js.calendars?.[calId]?.busy) || [];
-  return { ok:true, calendarId: calId, timeZone: normalizeTz(timeZone), busy, available: busy.length===0 };
+  return { ok:true, calendarId: calId, timeZone: timeZone || DEFAULT_TZ, busy, available: busy.length===0 };
 }
 async function googleCreateHold({ start, end, timeZone, calendarId, summary, description, attendees, ttlMinutes }){
   const token = await getGoogleAccessToken();
@@ -138,8 +111,8 @@ async function googleCreateHold({ start, end, timeZone, calendarId, summary, des
   const reqBody = {
     summary: summary || "DJ hold",
     description: description || "",
-    start: { dateTime: start, timeZone: normalizeTz(timeZone) },
-    end:   { dateTime: end,   timeZone: normalizeTz(timeZone) },
+    start: { dateTime: start, timeZone: timeZone || DEFAULT_TZ },
+    end:   { dateTime: end,   timeZone: timeZone || DEFAULT_TZ },
     attendees: Array.isArray(attendees) ? attendees.map(e => ({ email:String(e) })) : [],
     transparency: "opaque",
     status: "tentative",
@@ -176,13 +149,13 @@ async function execTool(req, name, args){
   if (name === "check_availability") {
     const local = await postJSON(`${base}/api/availability${qs}`, {
       start: args.start, end: args.end,
-      timeZone: normalizeTz(args.timeZone),
+      timeZone: args.timeZone || DEFAULT_TZ,
       calendarId: args.calendarId || DEFAULT_CAL
     }, authHeaders);
     if (!local.httpOk || (typeof local.status === "number" && local.status >= 400) || local.ok === false) {
       return await googleCheckAvailability({
         start: args.start, end: args.end,
-        timeZone: normalizeTz(args.timeZone),
+        timeZone: args.timeZone || DEFAULT_TZ,
         calendarId: args.calendarId || DEFAULT_CAL
       });
     }
@@ -192,7 +165,7 @@ async function execTool(req, name, args){
   if (name === "create_hold") {
     const local = await postJSON(`${base}/api/hold${qs}`, {
       start: args.start, end: args.end,
-      timeZone: normalizeTz(args.timeZone),
+      timeZone: args.timeZone || DEFAULT_TZ,
       calendarId: args.calendarId || DEFAULT_CAL,
       summary: args.summary || "DJ hold",
       description: args.description || "",
@@ -202,7 +175,7 @@ async function execTool(req, name, args){
     if (!local.httpOk || (typeof local.status === "number" && local.status >= 400) || local.ok === false) {
       return await googleCreateHold({
         start: args.start, end: args.end,
-        timeZone: normalizeTz(args.timeZone),
+        timeZone: args.timeZone || DEFAULT_TZ,
         calendarId: args.calendarId || DEFAULT_CAL,
         summary: args.summary, description: args.description,
         attendees: args.attendees, ttlMinutes: args.ttlMinutes
@@ -344,5 +317,4 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
 
