@@ -13,7 +13,7 @@ async function getOpenAIClient() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
-async function readRaw(req) { const chunks=[]; for await (const ch of req) chunks.push(ch); return Buffer.concat(chunks).toString("utf8"); }
+async function readRaw(req){ const chunks=[]; for await (const ch of req) chunks.push(ch); return Buffer.concat(chunks).toString("utf8"); }
 function tryJSON(s){ try{ return s?JSON.parse(s):null } catch { return null } }
 async function readBody(req){
   if (req.body!==undefined){
@@ -23,7 +23,6 @@ async function readBody(req){
   const raw = await readRaw(req);
   return tryJSON(raw) ?? {};
 }
-
 function extractMessages(body, q){
   let messages = Array.isArray(body?.messages) ? body.messages : null;
   const prompt = q || body?.prompt || body?.text || body?.message || body?.input || body?.content || null;
@@ -62,6 +61,37 @@ async function postJSON(url, body, headers={}){
   const text = await r.text(); let data; try{ data=JSON.parse(text) }catch{ data={ raw:text } }
   return { httpOk:r.ok, status:r.status, ...((typeof data==='object'&&data)?data:{}) };
 }
+
+function prettifyRange(startISO, endISO, tz){
+  // Keep it simple & robust (string as given)
+  return `${startISO} → ${endISO} (${tz})`;
+}
+
+function formatFromAvailability(result, args){
+  if (!result || result.ok === false || result.httpOk === false) {
+    const msg = result?.error || `HTTP ${result?.status||"??"}`;
+    return `Sorry — availability check failed (${msg}).`;
+  }
+  const tz = result.timeZone || args.timeZone || DEFAULT_TZ;
+  const human = prettifyRange(args.start, args.end, tz);
+  const isFree = (result.available === true) || (Array.isArray(result.busy) && result.busy.length === 0);
+  if (isFree) return `You're **FREE** for ${human}.`;
+  const blocks = Array.isArray(result.busy) ? result.busy.map(b => `${b.start || "?"}–${b.end || "?"}`).join(", ") : "unknown";
+  return `You're **BUSY** for ${human}. Busy blocks: ${blocks}.`;
+}
+
+function formatFromHold(result, args){
+  if (!result || result.ok === false || result.httpOk === false) {
+    const msg = result?.error || `HTTP ${result?.status||"??"}`;
+    return `Sorry — creating a hold failed (${msg}).`;
+  }
+  const tz = args.timeZone || DEFAULT_TZ;
+  const human = prettifyRange(args.start, args.end, tz);
+  const id   = result.id || result.hold?.id;
+  const link = result.htmlLink || result.hold?.htmlLink;
+  return `✅ Hold created for ${human}${link ? ` — link: ${link}` : ""}${id ? ` (id: ${id})` : ""}.`;
+}
+
 async function execTool(req, name, args){
   const base = origin(req);
   if (name==="check_availability"){
@@ -72,7 +102,13 @@ async function execTool(req, name, args){
     });
   }
   if (name==="create_hold"){
-    const headers = AUTH_SECRET ? { Authorization:`Bearer ${AUTH_SECRET}` } : {};
+    // Send several header variants to satisfy whatever your hold handler expects
+    const headers = {};
+    if (AUTH_SECRET) {
+      headers.Authorization   = `Bearer ${AUTH_SECRET}`;
+      headers["x-cron-secret"]= AUTH_SECRET;
+      headers["x-api-key"]    = AUTH_SECRET;
+    }
     return await postJSON(`${base}/api/hold`, {
       start: args.start, end: args.end,
       timeZone: args.timeZone || DEFAULT_TZ,
@@ -97,77 +133,69 @@ Rules:
 - Default calendar: ${DEFAULT_CAL}. Default time zone: ${DEFAULT_TZ}.
 - Keep answers concise and include a human-friendly time summary.`;
 
-export default async function handler(req,res){
+export default async function handler(req, res){
   const method = req.method || "GET";
 
-  // Simple GET test path still supported: /api/chat?q=...
-  if (method==="GET" && req.query?.q){
-    try{
-      const client=await getOpenAIClient();
-      const messages=[ {role:"system",content:systemPrompt}, {role:"user",content:String(req.query.q)} ];
-      const first=await client.chat.completions.create({ model:DEFAULT_MODEL, temperature:TEMPERATURE, messages, tools, tool_choice:"auto" });
-      const call=first.choices?.[0]?.message?.tool_calls?.[0];
-      if (!call){
-        const content=first.choices?.[0]?.message?.content ?? "";
-        return res.status(200).json({ ok:true, text:content, content, reply:{role:"assistant",content} });
-      }
-      const args=JSON.parse(call.function.arguments||"{}");
-      const tr=await execTool(req, call.function.name, args);
-      const second=await client.chat.completions.create({
-        model:DEFAULT_MODEL, temperature:TEMPERATURE,
-        messages:[ ...messages, {role:"assistant",tool_calls:[call]}, {role:"tool",tool_call_id:call.id,name:call.function.name,content:JSON.stringify(tr)} ]
-      });
-      const content=second.choices?.[0]?.message?.content ?? JSON.stringify(tr);
-      return res.status(200).json({ ok:true, text:content, content, reply:{role:"assistant",content}, toolResults:[tr] });
-    }catch(err){
-      return res.status(500).json({ ok:false, error: err?.message || "server_error" });
-    }
-  }
-
-  if (method!=="POST"){
-    res.setHeader("Allow","POST, GET");
-    return res.status(405).json({ ok:false, error:"method_not_allowed" });
-  }
-
-  try{
-    const body = await readBody(req);
-    const messages = extractMessages(body, req.query?.q);
-    if (!Array.isArray(messages) || messages.length===0){
-      return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
-    }
-
+  const runWithTools = async (messages) => {
     const client = await getOpenAIClient();
-
     const first = await client.chat.completions.create({
       model: DEFAULT_MODEL, temperature: TEMPERATURE,
-      messages: [{role:"system",content:systemPrompt}, ...messages],
+      messages: [{role:"system", content: systemPrompt}, ...messages],
       tools, tool_choice: "auto"
     });
 
-    const choice = first.choices?.[0];
-    const toolCalls = choice?.message?.tool_calls || [];
-    if (!toolCalls.length){
-      const content = choice?.message?.content ?? "";
-      return res.status(200).json({ ok:true, text:content, content, reply:{role:"assistant",content} });
+    const tcAll = first.choices?.[0]?.message?.tool_calls || [];
+    if (!tcAll.length) {
+      const content = first.choices?.[0]?.message?.content ?? "";
+      return { content, toolResults: [] };
     }
 
+    // Execute tool(s)
     const toolMsgs=[]; const results=[];
-    for (const tc of toolCalls){
+    for (const tc of tcAll){
       const args = JSON.parse(tc.function.arguments||"{}");
-      const tr = await execTool(req, tc.function.name, args);
+      const tr   = await execTool(req, tc.function.name, args);
       results.push({ name: tc.function.name, args, result: tr });
       toolMsgs.push({ role:"assistant", tool_calls:[tc] });
       toolMsgs.push({ role:"tool", tool_call_id: tc.id, name: tc.function.name, content: JSON.stringify(tr) });
     }
 
-    const second = await client.chat.completions.create({
-      model: DEFAULT_MODEL, temperature: TEMPERATURE,
-      messages: [{role:"system",content:systemPrompt}, ...messages, ...toolMsgs]
-    });
+    // Deterministic, server-crafted final message (skip model if tools ran)
+    // We generate a concise answer directly from toolResults:
+    let content = "";
+    for (const r of results){
+      if (r.name === "check_availability") content += (content ? "\n" : "") + formatFromAvailability(r.result, r.args);
+      if (r.name === "create_hold")        content += (content ? "\n" : "") + formatFromHold(r.result, r.args);
+    }
+    if (!content) content = "Done.";
 
-    const content = second.choices?.[0]?.message?.content ?? "";
-    return res.status(200).json({ ok:true, text:content, content, reply:{role:"assistant",content}, toolResults: results });
-  }catch(err){
+    return { content, toolResults: results };
+  };
+
+  if (method === "GET" && req.query?.q) {
+    try {
+      const out = await runWithTools([{ role:"user", content: String(req.query.q) }]);
+      return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content}, toolResults: out.toolResults });
+    } catch (err) {
+      return res.status(500).json({ ok:false, error: err?.message || "server_error" });
+    }
+  }
+
+  if (method !== "POST") {
+    res.setHeader("Allow", "POST, GET");
+    return res.status(405).json({ ok:false, error:"method_not_allowed" });
+  }
+
+  try {
+    const body = await readBody(req);
+    const messages = extractMessages(body, req.query?.q);
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
+    }
+
+    const out = await runWithTools(messages);
+    return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content}, toolResults: out.toolResults });
+  } catch (err) {
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
