@@ -1,6 +1,6 @@
 ﻿export const config = { runtime: "nodejs" };
 
-const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5-mini";
+const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-4o-mini";
 const TEMPERATURE   = Number(process.env.CHAT_TEMPERATURE || "0.7");
 const DEFAULT_TZ    = process.env.TIME_ZONE || "America/Vancouver";
 const DEFAULT_CAL   = process.env.GOOGLE_CALENDAR_ID || "primary";
@@ -300,4 +300,3 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
