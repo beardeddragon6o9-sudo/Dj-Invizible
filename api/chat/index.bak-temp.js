@@ -1,12 +1,7 @@
 ﻿export const config = { runtime: "nodejs" };
 
 const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5-mini";
-function _safeTemp(raw) {
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return 0.7;     // default
-  return Math.max(0, Math.min(2, n));      // clamp 0..2
-}
-const TEMPERATURE = _safeTemp(process.env.CHAT_TEMPERATURE);
+const TEMPERATURE   = Number(process.env.CHAT_TEMPERATURE || "1");
 const DEFAULT_TZ    = process.env.TIME_ZONE || "America/Vancouver";
 const DEFAULT_CAL   = process.env.GOOGLE_CALENDAR_ID || "primary";
 const HOLD_TTL_MIN  = Number(process.env.HOLD_TTL_MINUTES || "60");
@@ -305,6 +300,5 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-
 
 
