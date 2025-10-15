@@ -55,6 +55,20 @@ async function postJSON(url, body, headers = {}) {
   let data; try { data = JSON.parse(text) } catch { data = { raw: text } }
   return { httpOk: r.ok, status: r.status, ...((typeof data === "object" && data) ? data : {}) };
 }
+async function safeFetch(url, opts = {}) {
+  try {
+    const res = await fetch(url, opts);
+    const ct = res.headers?.get?.('content-type') || '';
+    const raw = await res.text();
+    let body = raw;
+    if (ct.includes('application/json')) {
+      try { body = JSON.parse(raw); } catch {}
+    }
+    return { ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers || []), body };
+  } catch (err) {
+    return { ok: false, status: 0, error: String(err?.message || err), body: null };
+  }
+}
 
 // --- Google fallback (refresh -> access; resolve "primary")
 async function getGoogleAccessToken(){
