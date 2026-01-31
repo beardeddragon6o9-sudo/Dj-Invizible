@@ -8,10 +8,6 @@ function _safeTemp(raw) {
   return Math.max(0, Math.min(2, n));       // clamp 0..2
 }
 const TEMPERATURE   = _safeTemp(process.env.CHAT_TEMPERATURE);
-const DEFAULT_TZ    = process.env.TIME_ZONE || "America/Vancouver";
-const DEFAULT_CAL   = process.env.GOOGLE_CALENDAR_ID || "primary";
-const HOLD_TTL_MIN  = Number(process.env.HOLD_TTL_MINUTES || "60");
-const AUTH_SECRET   = process.env.SWEEP_SECRET || process.env.API_SECRET || "";
 
 // --- OpenAI client (ESM)
 async function getOpenAIClient() {
@@ -21,10 +17,6 @@ async function getOpenAIClient() {
 }
 
 // --- tiny utils
-function origin(req) {
-  const h = process.env.VERCEL_URL || req.headers.host || "";
-  return h.startsWith("http") ? h : `https://${h}`;
-}
 async function readRaw(req) {
   const chunks = [];
   for await (const ch of req) chunks.push(ch);
@@ -45,259 +37,18 @@ function extractMessages(body, q){
   if (!messages && prompt) messages = [{ role:"user", content:String(prompt) }];
   return messages || [];
 }
-async function postJSON(url, body, headers = {}) {
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type":"application/json", ...headers },
-    body: JSON.stringify(body)
-  });
-  const text = await r.text();
-  let data; try { data = JSON.parse(text) } catch { data = { raw: text } }
-  return { httpOk: r.ok, status: r.status, ...((typeof data === "object" && data) ? data : {}) };
-}
-async function safeFetch(url, opts = {}) {
-  try {
-    const res = await fetch(url, opts);
-    const ct = res.headers?.get?.('content-type') || '';
-    const raw = await res.text();
-    let body = raw;
-    if (ct.includes('application/json')) {
-      try { body = JSON.parse(raw); } catch {}
-    }
-    return { ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers || []), body };
-  } catch (err) {
-    return { ok: false, status: 0, error: String(err?.message || err), body: null };
-  }
-}
-
-// --- Google fallback (refresh -> access; resolve "primary")
-async function getGoogleAccessToken(){
-  const client_id = process.env.GOOGLE_CLIENT_ID;
-  const client_secret = process.env.GOOGLE_CLIENT_SECRET;
-  const refresh_token = process.env.GOOGLE_REFRESH_TOKEN;
-  if (!client_id || !client_secret || !refresh_token) throw new Error("Missing Google OAuth envs");
-  const r = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type":"application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id, client_secret, refresh_token
-    })
-  });
-  const js = await r.json();
-  if (!r.ok || !js.access_token) throw new Error(js.error || "token_refresh_failed");
-  return js.access_token;
-}
-async function resolveCalendarId(token, calendarId) {
-  let calId = calendarId || DEFAULT_CAL;
-  if (calId !== "primary") return calId;
-  const r = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const js = await r.json();
-  if (r.ok && Array.isArray(js.items)) {
-    const primary = js.items.find(i => i.primary) || js.items.find(i => i.accessRole === "owner") || js.items[0];
-    if (primary?.id) return primary.id;
-  }
-  return "primary";
-}
-async function googleCheckAvailability({ start, end, timeZone, calendarId }){
-  const token = await getGoogleAccessToken();
-  const calId = await resolveCalendarId(token, calendarId);
-  const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
-    body: JSON.stringify({
-      timeMin: start,
-      timeMax: end,
-      timeZone: timeZone || DEFAULT_TZ,
-      items: [ { id: calId } ]
-    })
-  });
-  const js = await r.json();
-  if (!r.ok) return { httpOk:false, status:r.status, error: js.error?.message || "google_freebusy_failed", raw: js };
-  const busy = (js.calendars?.[calId]?.busy) || [];
-  return { ok:true, calendarId: calId, timeZone: timeZone || DEFAULT_TZ, busy, available: busy.length===0 };
-}
-async function googleCreateHold({ start, end, timeZone, calendarId, summary, description, attendees, ttlMinutes }){
-  const token = await getGoogleAccessToken();
-  const calId = await resolveCalendarId(token, calendarId);
-  const reqBody = {
-    summary: summary || "DJ hold",
-    description: description || "",
-    start: { dateTime: start, timeZone: timeZone || DEFAULT_TZ },
-    end:   { dateTime: end,   timeZone: timeZone || DEFAULT_TZ },
-    attendees: Array.isArray(attendees) ? attendees.map(e => ({ email:String(e) })) : [],
-    transparency: "opaque",
-    status: "tentative",
-    extendedProperties: {
-      private: {
-        hold: "true",
-        autoCancelAt: new Date(Date.now() + (Number(ttlMinutes||HOLD_TTL_MIN)*60*1000)).toISOString(),
-        createdAt: new Date().toISOString()
-      }
-    }
-  };
-  const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?sendUpdates=none`, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
-    body: JSON.stringify(reqBody)
-  });
-  const js = await r.json();
-  if (!r.ok) return { httpOk:false, status:r.status, error: js.error?.message || "google_events_insert_failed", raw: js };
-  return { ok:true, id: js.id, calendarId: calId, htmlLink: js.htmlLink, start: js.start, end: js.end, status: js.status };
-}
-
-// --- Tool execution: try local first (with headers & ?secret), fallback on any non-2xx
-async function execTool(req, name, args){
-  const base = origin(req);
-
-  const authHeaders = {};
-  if (AUTH_SECRET) {
-    authHeaders.Authorization    = `Bearer ${AUTH_SECRET}`;
-    authHeaders["x-cron-secret"] = AUTH_SECRET;
-    authHeaders["x-api-key"]     = AUTH_SECRET;
-  }
-  const qs = AUTH_SECRET ? `?secret=${encodeURIComponent(AUTH_SECRET)}` : "";
-
-  if (name === "check_availability") {
-    const local = await postJSON(`${base}/api/availability${qs}`, {
-      start: args.start, end: args.end,
-      timeZone: args.timeZone || DEFAULT_TZ,
-      calendarId: args.calendarId || DEFAULT_CAL
-    }, authHeaders);
-    if (!local.httpOk || (typeof local.status === "number" && local.status >= 400) || local.ok === false) {
-      return await googleCheckAvailability({
-        start: args.start, end: args.end,
-        timeZone: args.timeZone || DEFAULT_TZ,
-        calendarId: args.calendarId || DEFAULT_CAL
-      });
-    }
-    return local;
-  }
-
-  if (name === "create_hold") {
-    const local = await postJSON(`${base}/api/hold${qs}`, {
-      start: args.start, end: args.end,
-      timeZone: args.timeZone || DEFAULT_TZ,
-      calendarId: args.calendarId || DEFAULT_CAL,
-      summary: args.summary || "DJ hold",
-      description: args.description || "",
-      attendees: Array.isArray(args.attendees) ? args.attendees : [],
-      ttlMinutes: Number(args.ttlMinutes || HOLD_TTL_MIN)
-    }, authHeaders);
-    if (!local.httpOk || (typeof local.status === "number" && local.status >= 400) || local.ok === false) {
-      return await googleCreateHold({
-        start: args.start, end: args.end,
-        timeZone: args.timeZone || DEFAULT_TZ,
-        calendarId: args.calendarId || DEFAULT_CAL,
-        summary: args.summary, description: args.description,
-        attendees: args.attendees, ttlMinutes: args.ttlMinutes
-      });
-    }
-    return local;
-  }
-
-  return { ok:false, error:`Unknown tool: ${name}` };
-}
-
-// --- Formatting
-function prettifyRange(startISO, endISO, tz){ return `${startISO}  ${endISO} (${tz})`; }
-function formatFromAvailability(result, args){
-  if (!result || result.ok === false || result.httpOk === false) {
-    const msg = result?.error || `HTTP ${result?.status||"??"}`;
-    return `Sorry  availability check failed (${msg}).`;
-  }
-  const tz = result.timeZone || args.timeZone || DEFAULT_TZ;
-  const human = prettifyRange(args.start, args.end, tz);
-  const isFree = (result.available === true) || (Array.isArray(result.busy) && result.busy.length === 0);
-  if (isFree) return `You're **FREE** for ${human}.`;
-  const blocks = Array.isArray(result.busy) ? result.busy.map(b => `${b.start || "?"}${b.end || "?"}`).join(", ") : "unknown";
-  return `You're **BUSY** for ${human}. Busy blocks: ${blocks}.`;
-}
-function formatFromHold(result, args){
-  if (!result || result.ok === false || result.httpOk === false) {
-    const msg = result?.error || `HTTP ${result?.status||"??"}`;
-    return `Sorry  creating a hold failed (${msg}).`;
-  }
-  const tz = args.timeZone || DEFAULT_TZ;
-  const human = prettifyRange(args.start, args.end, tz);
-  const id   = result.id || result.hold?.id;
-  const link = result.htmlLink || result.hold?.htmlLink;
-  return ` Hold created for ${human}${link ? `  link: ${link}` : ""}${id ? ` (id: ${id})` : ""}.`;
-}
-
-// --- Tools schema for the model
-const tools = [
-  { type:"function", function:{
-      name:"check_availability",
-      description:"Check Google Calendar availability for a time range.",
-      parameters:{ type:"object", properties:{
-        start:{type:"string",description:"ISO start"}, end:{type:"string",description:"ISO end"},
-        calendarId:{type:"string","default":DEFAULT_CAL},
-        timeZone:{type:"string","default":DEFAULT_TZ},
-      }, required:["start","end"] }
-  }},
-  { type:"function", function:{
-      name:"create_hold",
-      description:"Create a tentative hold with auto-expire (ttlMinutes).",
-      parameters:{ type:"object", properties:{
-        start:{type:"string"}, end:{type:"string"},
-        summary:{type:"string","default":"DJ hold"},
-        description:{type:"string"},
-        attendees:{type:"array", items:{type:"string"}},
-        calendarId:{type:"string","default":DEFAULT_CAL},
-        timeZone:{type:"string","default":DEFAULT_TZ},
-        ttlMinutes:{type:"number","default":HOLD_TTL_MIN}
-      }, required:["start","end"] }
-  }},
-];
-
-const systemPrompt = `
-You are DJ Invizible's assistant. You have access to TOOLS:
-- check_availability(start, end, calendarId?, timeZone?)
-- create_hold(start, end, summary?, description?, attendees?, calendarId?, timeZone?, ttlMinutes?)
-
-Rules:
-- When the user asks about schedules, availability, booking, or holds, you MUST call a tool with precise ISO datetimes in .
-- If the user gives a date without a year (e.g., "Sep 25"), interpret it as the NEXT FUTURE occurrence in . If that day has already passed this year, use the same day next year.
-- Prefer FUTURE ranges. If the user clearly wants the past, you may use past times, otherwise assume future.
-- Always include YEAR and full ISO timestamps with timezone offsets (e.g., 2025-09-30T18:00:00-07:00).
-- Default calendar: . Default time zone: .
-- Keep answers concise and include a human-friendly time summary.
-`;
+const systemPrompt = "You are DJ Invizible's assistant.";
 
 // --- Orchestrator
-async function runWithTools(req, messages){
+async function runChat(messages){
   const client = await getOpenAIClient();
-  const first = await client.chat.completions.create({
+  const result = await client.chat.completions.create({
     model: DEFAULT_MODEL,
     temperature: TEMPERATURE,
     messages: [{role:"system", content: systemPrompt}, ...messages],
-    tools,
-    tool_choice: "auto"
   });
-
-  const tcs = first.choices?.[0]?.message?.tool_calls || [];
-  if (!tcs.length) {
-    const content = first.choices?.[0]?.message?.content ?? "";
-    return { content, toolResults: [] };
-  }
-
-  const results = [];
-  for (const tc of tcs) {
-    const args = JSON.parse(tc.function.arguments || "{}");
-    const tr   = await execTool(req, tc.function.name, args);
-    results.push({ name: tc.function.name, args, result: tr });
-  }
-
-  let content = "";
-  for (const r of results){
-    if (r.name === "check_availability") content += (content ? "\\n" : "") + formatFromAvailability(r.result, r.args);
-    if (r.name === "create_hold")        content += (content ? "\\n" : "") + formatFromHold(r.result, r.args);
-  }
-  if (!content) content = "Done.";
-  return { content, toolResults: results };
+  const content = result.choices?.[0]?.message?.content ?? "";
+  return { content };
 }
 
 // --- Handler
@@ -307,8 +58,8 @@ export default async function handler(req, res){
   // Simple GET probe: /api/chat?q=hello
   if (method === "GET" && req.query?.q) {
     try {
-      const out = await runWithTools(req, [{ role:"user", content: String(req.query.q) }]);
-      return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content}, toolResults: out.toolResults });
+      const out = await runChat([{ role:"user", content: String(req.query.q) }]);
+      return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
     } catch (err) {
       return res.status(500).json({ ok:false, error: err?.message || "server_error" });
     }
@@ -325,10 +76,9 @@ export default async function handler(req, res){
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
     }
-    const out = await runWithTools(req, messages);
-    return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content}, toolResults: out.toolResults });
+    const out = await runChat(messages);
+    return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
   } catch (err) {
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
-

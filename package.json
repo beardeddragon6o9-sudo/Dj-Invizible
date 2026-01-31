@@ -22,7 +22,6 @@
     "node": "20.x"
   },
   "dependencies": {
-    "googleapis": "^159.0.0",
     "openai": "^5.19.1"
   }
 }
