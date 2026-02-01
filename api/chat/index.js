@@ -1,4 +1,6 @@
-﻿export const config = { runtime: "nodejs" };
+import { calCancelBooking, calCheckAvailability, calCreateBooking } from "../_lib/cal.js";
+
+export const config = { runtime: "nodejs" };
 
 // --- Config & envs
 const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5-mini";
@@ -37,7 +39,107 @@ function extractMessages(body, q){
   if (!messages && prompt) messages = [{ role:"user", content:String(prompt) }];
   return messages || [];
 }
-const systemPrompt = "You are DJ Invizible's assistant.";
+const NIGHT_EVENT = process.env.CAL_EVENT_TYPE_NAME || "Night gig";
+const DAY_EVENT = process.env.CAL_EVENT_TYPE_NAME_DAY || "Day time DJ";
+const systemPrompt =
+  "You are DJ Invizible's assistant. " +
+  "When scheduling, choose the Cal.com event type based on intent: " +
+  `use eventTypeName \"${NIGHT_EVENT}\" for evening/night gigs (default), ` +
+  `use eventTypeName \"${DAY_EVENT}\" for daytime/morning/afternoon gigs. ` +
+  "Check availability before creating a booking, and confirm the time zone and exact start time.";
+
+
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "cal_check_availability",
+      description: "Check available time slots for a Cal.com event type.",
+      parameters: {
+        type: "object",
+        properties: {
+          start: { type: "string", description: "ISO 8601 start datetime (UTC) or date." },
+          end: { type: "string", description: "ISO 8601 end datetime (UTC) or date." },
+          timeZone: { type: "string", description: "IANA time zone (e.g. America/Los_Angeles)." },
+          duration: { type: "integer", description: "Slot duration in minutes." },
+          format: { type: "string", description: "Use 'range' for time ranges." },
+          bookingUidToReschedule: { type: "string" },
+          eventTypeId: { type: "integer" },
+          eventTypeSlug: { type: "string" },
+          eventTypeName: { type: "string" },
+          username: { type: "string" },
+          teamSlug: { type: "string" },
+          organizationSlug: { type: "string" },
+        },
+        required: ["start", "end"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cal_create_booking",
+      description: "Create a Cal.com booking.",
+      parameters: {
+        type: "object",
+        properties: {
+          start: { type: "string", description: "ISO 8601 start datetime (UTC)." },
+          attendee: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              email: { type: "string" },
+              timeZone: { type: "string" },
+              phoneNumber: { type: "string" },
+              language: { type: "string" },
+            },
+            required: ["name", "email", "timeZone"],
+          },
+          guests: { type: "array", items: { type: "string" } },
+          bookingFieldsResponses: { type: "object" },
+          metadata: { type: "object" },
+          eventTypeId: { type: "integer" },
+          eventTypeSlug: { type: "string" },
+          eventTypeName: { type: "string" },
+          username: { type: "string" },
+          teamSlug: { type: "string" },
+          organizationSlug: { type: "string" },
+        },
+        required: ["start", "attendee"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cal_cancel_booking",
+      description: "Cancel a Cal.com booking by booking UID.",
+      parameters: {
+        type: "object",
+        properties: {
+          bookingUid: { type: "string" },
+          cancellationReason: { type: "string" },
+          cancelSubsequentBookings: { type: "boolean" },
+          seatUid: { type: "string" },
+        },
+        required: ["bookingUid"],
+      },
+    },
+  },
+];
+
+async function runTool(name, args) {
+  switch (name) {
+    case "cal_check_availability":
+      return await calCheckAvailability(args);
+    case "cal_create_booking":
+      return await calCreateBooking(args);
+    case "cal_cancel_booking":
+      return await calCancelBooking(args);
+    default:
+      throw new Error(`Unknown tool: ${name}`);
+  }
+}
 
 // --- Orchestrator
 async function runChat(messages){
@@ -46,8 +148,44 @@ async function runChat(messages){
     model: DEFAULT_MODEL,
     temperature: TEMPERATURE,
     messages: [{role:"system", content: systemPrompt}, ...messages],
+    tools,
+    tool_choice: "auto",
   });
-  const content = result.choices?.[0]?.message?.content ?? "";
+
+  const first = result.choices?.[0]?.message;
+  if (!first?.tool_calls?.length) {
+    const content = first?.content ?? "";
+    return { content };
+  }
+
+  const toolMessages = [];
+  for (const call of first.tool_calls) {
+    const name = call?.function?.name;
+    let args = {};
+    try {
+      args = call?.function?.arguments ? JSON.parse(call.function.arguments) : {};
+    } catch {
+      args = {};
+    }
+    let payload;
+    try {
+      payload = await runTool(name, args);
+    } catch (err) {
+      payload = { ok: false, error: err?.message || "tool_error" };
+    }
+    toolMessages.push({
+      role: "tool",
+      tool_call_id: call.id,
+      content: JSON.stringify(payload),
+    });
+  }
+
+  const followup = await client.chat.completions.create({
+    model: DEFAULT_MODEL,
+    temperature: TEMPERATURE,
+    messages: [{role:"system", content: systemPrompt}, ...messages, first, ...toolMessages],
+  });
+  const content = followup.choices?.[0]?.message?.content ?? "";
   return { content };
 }
 
@@ -82,3 +220,5 @@ export default async function handler(req, res){
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
 }
+
+
