@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DJ Invizible - Owner Inbox</title>
+    <meta name="theme-color" content="#0b0d12" />
+    <link rel="manifest" href="/owner/manifest.json" />
+    <link rel="stylesheet" href="/owner/styles.css" />
+    <link rel="icon" href="/assets/img/invizible.png" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="logo-dot"></span>
+          <div>
+            <div class="brand-title">Owner Inbox</div>
+            <div class="brand-sub">DJ Invizible screening requests</div>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button id="refreshBtn" class="btn ghost" type="button">Refresh</button>
+          <button id="logoutBtn" class="btn ghost" type="button">Sign out</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <section id="loginCard" class="card login-card">
+          <h1>Owner login</h1>
+          <p>Private inbox for booking requests.</p>
+          <form id="loginForm">
+            <label>
+              Password
+              <input id="passwordInput" type="password" autocomplete="current-password" required />
+            </label>
+            <button class="btn primary" type="submit">Unlock inbox</button>
+            <div id="loginError" class="hint error" role="alert"></div>
+          </form>
+        </section>
+
+        <section id="inbox" class="inbox hidden">
+          <div class="status-row">
+            <div id="storeInfo" class="hint"></div>
+            <div id="lastUpdated" class="hint"></div>
+          </div>
+          <div id="requestList" class="request-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/owner/app.js"></script>
+  </body>
+</html>

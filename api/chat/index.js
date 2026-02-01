@@ -1,4 +1,5 @@
-import { calCancelBooking, calCheckAvailability, calCreateBooking } from "../_lib/cal.js";
+import { calCheckAvailability } from "../_lib/cal.js";
+import { createBookingRequest } from "../_lib/requestsStore.js";
 
 export const config = { runtime: "nodejs" };
 
@@ -43,10 +44,14 @@ const NIGHT_EVENT = process.env.CAL_EVENT_TYPE_NAME || "Night gig";
 const DAY_EVENT = process.env.CAL_EVENT_TYPE_NAME_DAY || "Day time DJ";
 const systemPrompt =
   "You are DJ Invizible's assistant. " +
+  "Your goal is to screen booking requests, not create official bookings. " +
+  "Collect: venue, date, time window, preferred start time, contact name, contact phone or email (email required to finalize booking), and preferred payment method. " +
+  "Assume Pacific time; do not ask about time zones or display them. " +
+  "Ask: \"Want me to create a booking request to DJ Invizible?\" before sending. " +
   "When scheduling, choose the Cal.com event type based on intent: " +
   `use eventTypeName \"${NIGHT_EVENT}\" for evening/night gigs (default), ` +
   `use eventTypeName \"${DAY_EVENT}\" for daytime/morning/afternoon gigs. ` +
-  "Check availability before creating a booking, and confirm the time zone and exact start time.";
+  "You may check availability, but do not create or cancel bookings.";
 
 
 const tools = [
@@ -78,51 +83,23 @@ const tools = [
   {
     type: "function",
     function: {
-      name: "cal_create_booking",
-      description: "Create a Cal.com booking.",
+      name: "create_booking_request",
+      description: "Create a booking request for DJ Invizible (screening only).",
       parameters: {
         type: "object",
         properties: {
-          start: { type: "string", description: "ISO 8601 start datetime (UTC)." },
-          attendee: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              email: { type: "string" },
-              timeZone: { type: "string" },
-              phoneNumber: { type: "string" },
-              language: { type: "string" },
-            },
-            required: ["name", "email", "timeZone"],
-          },
-          guests: { type: "array", items: { type: "string" } },
-          bookingFieldsResponses: { type: "object" },
-          metadata: { type: "object" },
-          eventTypeId: { type: "integer" },
-          eventTypeSlug: { type: "string" },
           eventTypeName: { type: "string" },
-          username: { type: "string" },
-          teamSlug: { type: "string" },
-          organizationSlug: { type: "string" },
+          venue: { type: "string" },
+          date: { type: "string", description: "Event date in Pacific time (YYYY-MM-DD)." },
+          timeWindow: { type: "string", description: "Preferred time window in Pacific time." },
+          preferredStart: { type: "string", description: "Preferred start time in Pacific time." },
+          contactName: { type: "string" },
+          contactEmail: { type: "string" },
+          contactPhone: { type: "string" },
+          paymentMethod: { type: "string" },
+          notes: { type: "string" },
         },
-        required: ["start", "attendee"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "cal_cancel_booking",
-      description: "Cancel a Cal.com booking by booking UID.",
-      parameters: {
-        type: "object",
-        properties: {
-          bookingUid: { type: "string" },
-          cancellationReason: { type: "string" },
-          cancelSubsequentBookings: { type: "boolean" },
-          seatUid: { type: "string" },
-        },
-        required: ["bookingUid"],
+        required: ["venue", "date", "timeWindow", "contactName", "paymentMethod"],
       },
     },
   },
@@ -131,11 +108,24 @@ const tools = [
 async function runTool(name, args) {
   switch (name) {
     case "cal_check_availability":
-      return await calCheckAvailability(args);
-    case "cal_create_booking":
-      return await calCreateBooking(args);
-    case "cal_cancel_booking":
-      return await calCancelBooking(args);
+      return await calCheckAvailability({
+        ...args,
+        timeZone: args?.timeZone || "America/Los_Angeles",
+      });
+    case "create_booking_request":
+      return await createBookingRequest({
+        eventTypeName: args?.eventTypeName || NIGHT_EVENT,
+        venue: args?.venue,
+        date: args?.date,
+        timeWindow: args?.timeWindow,
+        preferredStart: args?.preferredStart,
+        contactName: args?.contactName,
+        contactEmail: args?.contactEmail,
+        contactPhone: args?.contactPhone,
+        paymentMethod: args?.paymentMethod,
+        notes: args?.notes,
+        source: "chat",
+      });
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
