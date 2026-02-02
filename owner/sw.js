@@ -1,4 +1,4 @@
-const CACHE_NAME = "owner-inbox-v1";
+const CACHE_NAME = "owner-inbox-v2";
 const ASSETS = [
   "/owner/",
   "/owner/index.html",
