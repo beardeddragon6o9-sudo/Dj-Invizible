@@ -42,6 +42,10 @@ function extractMessages(body, q){
 }
 const NIGHT_EVENT = process.env.CAL_EVENT_TYPE_NAME || "Night gig";
 const DAY_EVENT = process.env.CAL_EVENT_TYPE_NAME_DAY || "Day time DJ";
+const NIGHT_BLOCK_START = "18:00";
+const NIGHT_BLOCK_END = "03:00";
+const DAY_BLOCK_START = "06:00";
+const DAY_BLOCK_END = "16:00";
 const systemPrompt =
   "You are DJ Invizible's assistant. " +
   "Your goal is to screen booking requests, not create official bookings. " +
@@ -54,6 +58,10 @@ const systemPrompt =
   "When scheduling, choose the Cal.com event type based on intent: " +
   `use eventTypeName \"${NIGHT_EVENT}\" for evening/night gigs (default), ` +
   `use eventTypeName \"${DAY_EVENT}\" for daytime/morning/afternoon gigs. ` +
+  `Night block is ${NIGHT_BLOCK_START}-${NIGHT_BLOCK_END}; day block is ${DAY_BLOCK_START}-${DAY_BLOCK_END} (Pacific). ` +
+  "If any booking overlaps a block, the entire block is unavailable. " +
+  "If a request spans both day and night blocks, both blocks must be free. " +
+  "When calling availability, set blockType to 'night', 'day', or 'full' to enforce these blocks. " +
   "Always check availability before sending a booking request. " +
   "If no slots are available, ask for alternate dates or times. " +
   "You may check availability, but do not create or cancel bookings.";
@@ -73,6 +81,7 @@ const tools = [
           timeZone: { type: "string", description: "IANA time zone (e.g. America/Los_Angeles)." },
           duration: { type: "integer", description: "Slot duration in minutes." },
           format: { type: "string", description: "Use 'range' for time ranges." },
+          blockType: { type: "string", description: "Use 'day', 'night', or 'full' to enforce DJ block windows." },
           bookingUidToReschedule: { type: "string" },
           eventTypeId: { type: "integer" },
           eventTypeSlug: { type: "string" },
@@ -110,26 +119,177 @@ const tools = [
   },
 ];
 
+function extractDateOnly(value) {
+  if (!value || typeof value !== "string") return null;
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : null;
+}
+
+function addDaysToDate(dateStr, days) {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function getTimeZoneOffsetMs(date, timeZone) {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const parts = dtf.formatToParts(date);
+  const vals = {};
+  for (const part of parts) {
+    if (part.type !== "literal") vals[part.type] = part.value;
+  }
+  const asUtc = Date.UTC(
+    Number(vals.year),
+    Number(vals.month) - 1,
+    Number(vals.day),
+    Number(vals.hour),
+    Number(vals.minute),
+    Number(vals.second)
+  );
+  return asUtc - date.getTime();
+}
+
+function zonedTimeToUtcMs(dateStr, timeStr, timeZone) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hour, minute] = timeStr.split(":").map(Number);
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+  const offset = getTimeZoneOffsetMs(utcGuess, timeZone);
+  return utcGuess.getTime() - offset;
+}
+
+function buildBlockWindow(dateStr, blockType) {
+  if (blockType === "day") {
+    return {
+      start: `${dateStr}T${DAY_BLOCK_START}:00`,
+      end: `${dateStr}T${DAY_BLOCK_END}:00`,
+    };
+  }
+  const nextDate = addDaysToDate(dateStr, 1);
+  return {
+    start: `${dateStr}T${NIGHT_BLOCK_START}:00`,
+    end: `${nextDate}T${NIGHT_BLOCK_END}:00`,
+  };
+}
+
+function extractRanges(raw) {
+  const ranges = [];
+  const pushRange = (r) => {
+    if (r?.start && r?.end) ranges.push({ start: r.start, end: r.end });
+  };
+  const data = raw?.data || raw;
+  if (Array.isArray(data)) data.forEach(pushRange);
+  if (Array.isArray(data?.slots)) data.slots.forEach(pushRange);
+  if (Array.isArray(data?.ranges)) data.ranges.forEach(pushRange);
+  if (Array.isArray(data?.timeRanges)) data.timeRanges.forEach(pushRange);
+  if (Array.isArray(data?.availability)) data.availability.forEach(pushRange);
+  if (data && typeof data === "object") {
+    for (const value of Object.values(data)) {
+      if (Array.isArray(value)) value.forEach(pushRange);
+    }
+  }
+  return ranges;
+}
+
+function isBlockCovered(raw, blockStartMs, blockEndMs) {
+  const ranges = extractRanges(raw);
+  for (const range of ranges) {
+    const startMs = Date.parse(range.start);
+    const endMs = Date.parse(range.end);
+    if (Number.isFinite(startMs) && Number.isFinite(endMs)) {
+      if (startMs <= blockStartMs && endMs >= blockEndMs) return true;
+    }
+  }
+  return false;
+}
+
+async function checkBlockAvailability({ dateStr, blockType, eventTypeName, timeZone, baseArgs }) {
+  const blocks = [];
+  const needDay = blockType === "day" || blockType === "full";
+  const needNight = blockType === "night" || blockType === "full";
+  if (needDay) blocks.push("day");
+  if (needNight) blocks.push("night");
+
+  const results = [];
+  for (const block of blocks) {
+    const window = buildBlockWindow(dateStr, block);
+    const blockStartMs = zonedTimeToUtcMs(
+      window.start.slice(0, 10),
+      window.start.slice(11, 16),
+      timeZone
+    );
+    const blockEndMs = zonedTimeToUtcMs(
+      window.end.slice(0, 10),
+      window.end.slice(11, 16),
+      timeZone
+    );
+    const raw = await calCheckAvailability({
+      ...baseArgs,
+      eventTypeName,
+      start: window.start,
+      end: window.end,
+      timeZone,
+      format: "range",
+    });
+    const available = isBlockCovered(raw, blockStartMs, blockEndMs);
+    results.push({
+      block,
+      window,
+      available,
+    });
+  }
+
+  return {
+    ok: true,
+    blockType,
+    date: dateStr,
+    blocks: results,
+    available: results.every((b) => b.available),
+  };
+}
+
 async function runTool(name, args) {
   switch (name) {
     case "cal_check_availability":
       {
+        const timeZone = args?.timeZone || "America/Los_Angeles";
+        const eventTypeName = args?.eventTypeName || NIGHT_EVENT;
+        const eventName = String(eventTypeName || "").toLowerCase();
+        let blockType = args?.blockType;
+        if (!blockType) {
+          if (eventName.includes("day")) blockType = "day";
+          if (eventName.includes("night")) blockType = "night";
+        }
+        const dateStr = extractDateOnly(args?.start || args?.end);
+        if (blockType && dateStr) {
+          return await checkBlockAvailability({
+            dateStr,
+            blockType,
+            eventTypeName,
+            timeZone,
+            baseArgs: args,
+          });
+        }
+
         const start = args?.start;
         let end = args?.end;
-        const isDateOnly = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
-        const addDays = (s, days) => {
-          const d = new Date(`${s}T00:00:00Z`);
-          d.setUTCDate(d.getUTCDate() + days);
-          return d.toISOString().slice(0, 10);
-        };
-        if (isDateOnly(start) && (!end || (isDateOnly(end) && end === start))) {
-          end = addDays(start, 1);
+        if (extractDateOnly(start) && (!end || extractDateOnly(end) === start)) {
+          end = addDaysToDate(start, 1);
         }
         return await calCheckAvailability({
           ...args,
+          eventTypeName,
           start,
           end,
-          timeZone: args?.timeZone || "America/Los_Angeles",
+          timeZone,
         });
       }
     case "create_booking_request":
