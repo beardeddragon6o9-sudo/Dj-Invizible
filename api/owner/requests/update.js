@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       }
 
       let booking;
+      let bookingError;
       try {
         booking = await calCreateBooking({
           start,
@@ -58,11 +59,22 @@ export default async function handler(req, res) {
           },
         });
       } catch (err) {
+        bookingError = err?.message || "booking_failed";
+        const msg = String(bookingError).toLowerCase();
+        const status = err?.status;
+        const timeoutLike =
+          status === 504 ||
+          status === 524 ||
+          status === 408 ||
+          msg.includes("timeout") ||
+          msg.includes("timed out");
         const failed = await updateBookingRequest(id, {
-          status: "booking_failed",
-          bookingError: err?.message || "booking_failed",
+          status: timeoutLike ? "booking_pending" : "booking_failed",
+          bookingError,
+          lastAttemptAt: nowIso(),
         });
-        return res.status(500).json({ ok: false, error: err?.message || "booking_failed", request: failed });
+        const httpStatus = timeoutLike ? 202 : 500;
+        return res.status(httpStatus).json({ ok: false, error: bookingError, request: failed });
       }
 
       const bookingUid = booking?.data?.uid || booking?.uid;

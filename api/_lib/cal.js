@@ -29,7 +29,14 @@ export function getEnvEventRef() {
   };
 }
 
-export async function calFetch(path, { method = "GET", query, body, apiVersion } = {}) {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function calFetch(
+  path,
+  { method = "GET", query, body, apiVersion, timeoutMs, retry, retryDelayMs = 500, retryOn = [] } = {}
+) {
   requireApiKey();
   if (!apiVersion) throw new Error("cal-api-version is required for this endpoint.");
 
@@ -43,29 +50,54 @@ export async function calFetch(path, { method = "GET", query, body, apiVersion }
   };
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
-  const res = await fetch(url.toString(), {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const attempts = Math.max(1, Number(retry || 0) + 1);
+  let lastErr;
+  for (let i = 0; i < attempts; i += 1) {
+    let controller;
+    let timer;
+    try {
+      if (timeoutMs) {
+        controller = new AbortController();
+        timer = setTimeout(() => controller.abort(), timeoutMs);
+      }
+      const res = await fetch(url.toString(), {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: controller?.signal,
+      });
 
-  const text = await res.text();
-  let data;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = text;
+      }
+
+      if (!res.ok) {
+        const msg = data?.error?.message || data?.error || data?.message || res.statusText || "cal_api_error";
+        const err = new Error(`Cal.com API error (${res.status}): ${msg}`);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+
+      return data;
+    } catch (err) {
+      lastErr = err;
+      const status =
+        err?.status || (err?.name === "AbortError" ? 408 : err?.statusCode || null);
+      const shouldRetry = retryOn.includes(status);
+      if (!shouldRetry || i === attempts - 1) {
+        throw err;
+      }
+      await sleep(retryDelayMs);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
-
-  if (!res.ok) {
-    const msg = data?.error?.message || data?.error || data?.message || res.statusText || "cal_api_error";
-    const err = new Error(`Cal.com API error (${res.status}): ${msg}`);
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
-
-  return data;
+  throw lastErr;
 }
 
 function coalesce(a, b) {
@@ -135,6 +167,7 @@ export async function calCheckAvailability(input = {}) {
   return calFetch("/slots", {
     method: "GET",
     apiVersion: "2024-09-04",
+    timeoutMs: 12000,
     query: clean({
       start,
       end,
@@ -175,6 +208,10 @@ export async function calCreateBooking(input = {}) {
   return calFetch("/bookings", {
     method: "POST",
     apiVersion: "2024-08-13",
+    timeoutMs: 15000,
+    retry: 1,
+    retryDelayMs: 800,
+    retryOn: [504, 524, 408],
     body: clean(payload),
   });
 }
@@ -186,6 +223,10 @@ export async function calCancelBooking(input = {}) {
   return calFetch(`/bookings/${encodeURIComponent(bookingUid)}/cancel`, {
     method: "POST",
     apiVersion: "2024-08-13",
+    timeoutMs: 12000,
+    retry: 1,
+    retryDelayMs: 800,
+    retryOn: [504, 524, 408],
     body: clean({ cancellationReason, cancelSubsequentBookings, seatUid }),
   });
 }

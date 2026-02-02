@@ -167,7 +167,7 @@ function renderRequests() {
     const actions = document.createElement("div");
     actions.className = "actions";
 
-    if (req.status === "pending" || req.status === "booking_failed") {
+    if (req.status === "pending" || req.status === "booking_failed" || req.status === "booking_pending") {
       const startInput = document.createElement("input");
       startInput.type = "datetime-local";
       startInput.value = toLocalInput(req.start || req.preferredStart);
@@ -175,7 +175,10 @@ function renderRequests() {
 
       const approveBtn = document.createElement("button");
       approveBtn.className = "btn ok";
-      approveBtn.textContent = req.status === "booking_failed" ? "Retry booking" : "Approve & book";
+      approveBtn.textContent =
+        req.status === "booking_failed" || req.status === "booking_pending"
+          ? "Retry booking"
+          : "Approve & book";
       approveBtn.dataset.action = "approve";
 
       const declineBtn = document.createElement("button");
