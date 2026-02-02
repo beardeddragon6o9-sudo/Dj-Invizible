@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { sendPushToAll } from "./pushStore.js";
 
 const HAS_KV = Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 let kvClient = null;
@@ -70,11 +71,20 @@ export async function createBookingRequest(input) {
     const listKey = "booking_request:list";
     await kv.set(key, item);
     await kv.lpush(listKey, item.id);
-    return { ok: true, request: item };
+  } else {
+    memory.items.set(item.id, item);
+    memory.list.unshift(item.id);
   }
 
-  memory.items.set(item.id, item);
-  memory.list.unshift(item.id);
+  try {
+    await sendPushToAll({
+      title: "New booking request",
+      body: `${item.eventTypeName || "Gig"} • ${item.date || ""} ${item.timeWindow || ""}`.trim(),
+      url: "/owner/",
+      requestId: item.id,
+    });
+  } catch {}
+
   return { ok: true, request: item };
 }
 

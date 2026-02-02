@@ -6,6 +6,7 @@ const inbox = document.getElementById("inbox");
 const requestList = document.getElementById("requestList");
 const refreshBtn = document.getElementById("refreshBtn");
 const logoutBtn = document.getElementById("logoutBtn");
+const notifyBtn = document.getElementById("notifyBtn");
 const storeInfo = document.getElementById("storeInfo");
 const lastUpdated = document.getElementById("lastUpdated");
 
@@ -19,6 +20,7 @@ function showLogin() {
   inbox.classList.add("hidden");
   refreshBtn.disabled = true;
   logoutBtn.disabled = true;
+  if (notifyBtn) notifyBtn.disabled = true;
 }
 
 function showInbox() {
@@ -26,6 +28,7 @@ function showInbox() {
   inbox.classList.remove("hidden");
   refreshBtn.disabled = false;
   logoutBtn.disabled = false;
+  if (notifyBtn) notifyBtn.disabled = false;
 }
 
 async function api(path, options = {}) {
@@ -40,6 +43,58 @@ async function api(path, options = {}) {
     throw new Error(error);
   }
   return data;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function enablePush() {
+  if (!("Notification" in window)) {
+    alert("Notifications not supported on this device.");
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    alert("Notifications permission not granted.");
+    return;
+  }
+  const swReg = await navigator.serviceWorker.ready;
+  const keyData = await api("/api/owner/push/public", { method: "GET" });
+  const appServerKey = urlBase64ToUint8Array(keyData.publicKey);
+  const subscription =
+    (await swReg.pushManager.getSubscription()) ||
+    (await swReg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: appServerKey,
+    }));
+  await api("/api/owner/push/subscribe", {
+    method: "POST",
+    body: JSON.stringify({ subscription }),
+  });
+  if (notifyBtn) notifyBtn.textContent = "Alerts enabled";
+}
+
+async function updatePushButton() {
+  if (!notifyBtn) return;
+  if (!("Notification" in window)) {
+    notifyBtn.textContent = "Alerts unsupported";
+    notifyBtn.disabled = true;
+    return;
+  }
+  const perm = Notification.permission;
+  if (perm === "granted") {
+    notifyBtn.textContent = "Alerts enabled";
+  } else if (perm === "denied") {
+    notifyBtn.textContent = "Alerts blocked";
+  } else {
+    notifyBtn.textContent = "Enable alerts";
+  }
 }
 
 function toLocalInput(value) {
@@ -158,6 +213,7 @@ async function checkAuth() {
   try {
     await api("/api/owner/me", { method: "GET" });
     showInbox();
+    await updatePushButton();
     await loadRequests();
   } catch {
     showLogin();
@@ -192,6 +248,14 @@ refreshBtn?.addEventListener("click", async () => {
 logoutBtn?.addEventListener("click", async () => {
   await api("/api/owner/logout", { method: "POST" });
   showLogin();
+});
+
+notifyBtn?.addEventListener("click", async () => {
+  try {
+    await enablePush();
+  } catch (err) {
+    alert(err?.message || "Unable to enable alerts.");
+  }
 });
 
 requestList?.addEventListener("click", async (event) => {
