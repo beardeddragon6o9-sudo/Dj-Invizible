@@ -45,7 +45,8 @@ const DAY_EVENT = process.env.CAL_EVENT_TYPE_NAME_DAY || "Day time DJ";
 const systemPrompt =
   "You are DJ Invizible's assistant. " +
   "Your goal is to screen booking requests, not create official bookings. " +
-  "Before collecting full details, check availability for the requested date/time window and only proceed if slots are available. " +
+  "First collect the date and a specific time window; do not claim availability without a time window. " +
+  "Then check availability for that window and only proceed if slots are available. " +
   "Collect: venue, date, time window, preferred start time, contact name, contact phone or email (email required to finalize booking), and preferred payment method. " +
   "Assume Pacific time; do not ask about time zones or display them. " +
   "Ask: \"Want me to create a booking request to DJ Invizible?\" before sending. " +
@@ -111,10 +112,25 @@ const tools = [
 async function runTool(name, args) {
   switch (name) {
     case "cal_check_availability":
-      return await calCheckAvailability({
-        ...args,
-        timeZone: args?.timeZone || "America/Los_Angeles",
-      });
+      {
+        const start = args?.start;
+        let end = args?.end;
+        const isDateOnly = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+        const addDays = (s, days) => {
+          const d = new Date(`${s}T00:00:00Z`);
+          d.setUTCDate(d.getUTCDate() + days);
+          return d.toISOString().slice(0, 10);
+        };
+        if (isDateOnly(start) && (!end || (isDateOnly(end) && end === start))) {
+          end = addDays(start, 1);
+        }
+        return await calCheckAvailability({
+          ...args,
+          start,
+          end,
+          timeZone: args?.timeZone || "America/Los_Angeles",
+        });
+      }
     case "create_booking_request":
       return await createBookingRequest({
         eventTypeName: args?.eventTypeName || NIGHT_EVENT,
