@@ -8,12 +8,14 @@ const refreshBtn = document.getElementById("refreshBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const notifyBtn = document.getElementById("notifyBtn");
 const testBtn = document.getElementById("testBtn");
+const toggleCanceledBtn = document.getElementById("toggleCanceledBtn");
 const storeInfo = document.getElementById("storeInfo");
 const lastUpdated = document.getElementById("lastUpdated");
 
 const state = {
   items: [],
   store: null,
+  showCanceled: false,
 };
 
 function showLogin() {
@@ -23,6 +25,7 @@ function showLogin() {
   logoutBtn.disabled = true;
   if (notifyBtn) notifyBtn.disabled = true;
   if (testBtn) testBtn.disabled = true;
+  if (toggleCanceledBtn) toggleCanceledBtn.disabled = true;
 }
 
 function showInbox() {
@@ -32,6 +35,7 @@ function showInbox() {
   logoutBtn.disabled = false;
   if (notifyBtn) notifyBtn.disabled = false;
   if (testBtn) testBtn.disabled = false;
+  if (toggleCanceledBtn) toggleCanceledBtn.disabled = false;
 }
 
 async function api(path, options = {}) {
@@ -203,7 +207,10 @@ function renderRequests() {
 }
 
 async function loadRequests() {
-  const data = await api("/api/owner/requests");
+  const url = state.showCanceled
+    ? "/api/owner/requests?includeCanceled=1"
+    : "/api/owner/requests";
+  const data = await api(url);
   state.items = data.items || [];
   state.store = data.store?.type || "memory";
   storeInfo.textContent =
@@ -267,6 +274,17 @@ testBtn?.addEventListener("click", async () => {
     alert("Test notification sent.");
   } catch (err) {
     alert(err?.message || "Test failed.");
+  }
+});
+
+toggleCanceledBtn?.addEventListener("click", async () => {
+  state.showCanceled = !state.showCanceled;
+  toggleCanceledBtn.textContent = state.showCanceled ? "Hide canceled" : "Show canceled";
+  try {
+    await loadRequests();
+  } catch (err) {
+    showLogin();
+    alert(err?.message || "Session expired.");
   }
 });
 
