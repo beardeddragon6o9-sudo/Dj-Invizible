@@ -91,14 +91,32 @@ export default async function handler(req, res) {
       if (!bookingUid) {
         return res.status(400).json({ ok: false, error: "Missing bookingUid to cancel." });
       }
-      await calCancelBooking({
-        bookingUid,
-        cancellationReason: body?.reason,
-      });
+      let cancelError = null;
+      try {
+        await calCancelBooking({
+          bookingUid,
+          cancellationReason: body?.reason,
+        });
+      } catch (err) {
+        cancelError = err?.message || "cancel_failed";
+        const msg = String(cancelError).toLowerCase();
+        const status = err?.status;
+        const treatAsCanceled =
+          status === 404 ||
+          status === 409 ||
+          msg.includes("already") ||
+          msg.includes("canceled") ||
+          msg.includes("cancelled") ||
+          msg.includes("not found");
+        if (!treatAsCanceled) {
+          return res.status(500).json({ ok: false, error: cancelError });
+        }
+      }
       const updated = await updateBookingRequest(id, {
         status: "canceled",
         canceledAt: nowIso(),
         cancelReason: body?.reason,
+        cancelError,
       });
       return res.status(200).json({ ok: true, request: updated });
     }
