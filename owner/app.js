@@ -157,20 +157,25 @@ function renderRequests() {
       <div class="kv"><div class="label">Contact phone</div><div class="value">${req.contactPhone || "-"}</div></div>
       <div class="kv"><div class="label">Payment method</div><div class="value">${req.paymentMethod || "-"}</div></div>
       <div class="kv"><div class="label">Notes</div><div class="value">${req.notes || "-"}</div></div>
+      ${
+        req.bookingError
+          ? `<div class="kv"><div class="label">Booking error</div><div class="value">${req.bookingError}</div></div>`
+          : ""
+      }
     `;
 
     const actions = document.createElement("div");
     actions.className = "actions";
 
-    if (req.status === "pending") {
+    if (req.status === "pending" || req.status === "booking_failed") {
       const startInput = document.createElement("input");
       startInput.type = "datetime-local";
-      startInput.value = toLocalInput(req.preferredStart);
+      startInput.value = toLocalInput(req.start || req.preferredStart);
       startInput.dataset.role = "start-input";
 
       const approveBtn = document.createElement("button");
       approveBtn.className = "btn ok";
-      approveBtn.textContent = "Approve & book";
+      approveBtn.textContent = req.status === "booking_failed" ? "Retry booking" : "Approve & book";
       approveBtn.dataset.action = "approve";
 
       const declineBtn = document.createElement("button");
