@@ -132,3 +132,11 @@ export async function sendPushToAll(payload) {
   const sent = results.filter((r) => r.status === "fulfilled").length;
   return { ok: true, sent };
 }
+
+export async function sendTestPush() {
+  return await sendPushToAll({
+    title: "DJ Invizible",
+    body: "Test notification",
+    url: "/owner/",
+  });
+}

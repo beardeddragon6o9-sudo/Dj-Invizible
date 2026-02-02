@@ -7,6 +7,7 @@ const requestList = document.getElementById("requestList");
 const refreshBtn = document.getElementById("refreshBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const notifyBtn = document.getElementById("notifyBtn");
+const testBtn = document.getElementById("testBtn");
 const storeInfo = document.getElementById("storeInfo");
 const lastUpdated = document.getElementById("lastUpdated");
 
@@ -21,6 +22,7 @@ function showLogin() {
   refreshBtn.disabled = true;
   logoutBtn.disabled = true;
   if (notifyBtn) notifyBtn.disabled = true;
+  if (testBtn) testBtn.disabled = true;
 }
 
 function showInbox() {
@@ -29,6 +31,7 @@ function showInbox() {
   refreshBtn.disabled = false;
   logoutBtn.disabled = false;
   if (notifyBtn) notifyBtn.disabled = false;
+  if (testBtn) testBtn.disabled = false;
 }
 
 async function api(path, options = {}) {
@@ -255,6 +258,15 @@ notifyBtn?.addEventListener("click", async () => {
     await enablePush();
   } catch (err) {
     alert(err?.message || "Unable to enable alerts.");
+  }
+});
+
+testBtn?.addEventListener("click", async () => {
+  try {
+    await api("/api/owner/push/test", { method: "POST" });
+    alert("Test notification sent.");
+  } catch (err) {
+    alert(err?.message || "Test failed.");
   }
 });
 
