@@ -11,7 +11,11 @@ export default async function handler(req, res) {
 
   try {
     requireOwner(req);
-    const items = await listBookingRequests();
+    const includeCanceled = String(req.query?.includeCanceled || "") === "1";
+    let items = await listBookingRequests();
+    if (!includeCanceled) {
+      items = items.filter((item) => item?.status !== "canceled");
+    }
     return res.status(200).json({ ok: true, items, store: storeInfo() });
   } catch (err) {
     const status = err?.message === "unauthorized" ? 401 : 500;
