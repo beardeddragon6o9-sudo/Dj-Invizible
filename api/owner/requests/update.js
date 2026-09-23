@@ -88,6 +88,7 @@ export default async function handler(req, res) {
             performanceStart,
             reservationStart: start,
             reservationEnd: window.end,
+            artist: request.artist,
             venue: request.venue,
             timeWindow: request.timeWindow,
             preferredStart: request.preferredStart,
