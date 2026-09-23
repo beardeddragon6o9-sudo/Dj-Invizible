@@ -6,6 +6,8 @@ import { requireOwner } from "../../_lib/ownerAuth.js";
 import {
   getBookingRequest,
   updateBookingRequest,
+  acquireBookingApproval,
+  releaseBookingApproval,
 } from "../../_lib/requestsStore.js";
 import { calCancelBooking, calCreateBooking, calCheckAvailability } from "../../_lib/cal.js";
 
@@ -32,6 +34,18 @@ export default async function handler(req, res) {
     if (!request) return res.status(404).json({ ok: false, error: "Request not found." });
 
     if (action === "approve") {
+      const approvalToken = await acquireBookingApproval(id);
+      if (!approvalToken) {
+        return res.status(409).json({ ok: false, error: "Booking is already processing. Wait a moment and refresh the inbox." });
+      }
+      try {
+        // Re-read under the lock so a second tab cannot act on stale status.
+        const current = await getBookingRequest(id);
+        if (!current) return res.status(404).json({ ok: false, error: "Request not found." });
+        if (current.bookingUid || current.status === "booked") {
+          return res.status(200).json({ ok: true, request: current, alreadyBooked: true });
+        }
+        const request = current;
       const performanceStart = body?.start;
       const eventTypeName = request.eventTypeName;
       const block = eventTypeName === eventNameFor('day') ? 'day' : eventTypeName === eventNameFor('night') ? 'night' : null;
@@ -111,6 +125,9 @@ export default async function handler(req, res) {
         bookingUid,
       });
       return res.status(200).json({ ok: true, request: updated });
+    }      } finally {
+        await releaseBookingApproval(id, approvalToken);
+      }
     }
 
     if (action === "decline") {
