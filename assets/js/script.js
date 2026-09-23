@@ -10,11 +10,18 @@ const bookingPersona = document.getElementById('booking-persona');
 const btnInviz = document.getElementById('mascot-invizible');
 const btnMav = document.getElementById('mascot-maverick');
 
-// === AI endpoint base (Vercel) ===
-const API_BASE   = 'https://dj-invizible.vercel.app';   // no trailing slash
+// One chat transport and one shared conversation history.
+const API_BASE = 'https://dj-invizible.vercel.app';
 const AI_ENDPOINT = `${API_BASE}/api/chat`;
+const chatHistory = [];
+let chatBusy = false;
+
 async function askAI(userText) {
+  if (chatBusy) return;
+  chatBusy = true;
   addMsg(userText, 'user');
+  chatHistory.push({ role: 'user', content: userText });
+  if (chatHistory.length > 24) chatHistory.splice(0, chatHistory.length - 24);
 
   const typing = document.createElement('div');
   typing.className = 'msg bot';
@@ -22,27 +29,39 @@ async function askAI(userText) {
   messages.appendChild(typing);
   messages.scrollTop = messages.scrollHeight;
 
+  const sendButton = form?.querySelector('[type="submit"]');
+  if (sendButton) sendButton.disabled = true;
+  if (input) input.disabled = true;
+
   try {
     const res = await fetch(AI_ENDPOINT, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ message: userText, persona: activePersona })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: chatHistory, persona: activePersona })
     });
-    const data = await res.json();
-    typing.remove();
-    speak(data.text || "I'm here.");
-
-    switch ((data.intent || '').toLowerCase()) {
-      case 'mixes': routes.mixes(); break;
-      case 'shows': routes.shows(); break;
-      case 'book':  routes.book();  break;
-      case 'about': routes.about(); break;
-      case 'contact': routes.contact(); break;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+      throw new Error(data.error || `Chat request failed (HTTP ${res.status})`);
     }
+    const reply = data.reply?.content ?? data.content ?? data.text;
+    if (!reply) throw new Error('The assistant returned an empty reply.');
+    typing.remove();
+    speak(reply);
+    chatHistory.push({ role: 'assistant', content: reply });
+    if (chatHistory.length > 24) chatHistory.splice(0, chatHistory.length - 24);
   } catch (err) {
     typing.remove();
-    speak("My brain glitched for a sec—try again.");
-    console.error(err);
+    // Do not preserve a user turn that never received a successful reply.
+    if (chatHistory.at(-1)?.role === 'user') chatHistory.pop();
+    speak(`Sorry, I couldn't complete that request: ${err.message || 'server_error'}. Please try again.`);
+    console.error('[DJ chat]', err);
+  } finally {
+    chatBusy = false;
+    if (sendButton) sendButton.disabled = false;
+    if (input) {
+      input.disabled = false;
+      input.focus();
+    }
   }
 }
 
@@ -98,6 +117,7 @@ function applyPersona(persona){
   // chat panel prep
   panel.classList.remove('hidden'); // ensure open
   messages.innerHTML = ''; // reset chat for clarity
+  chatHistory.length = 0; // don't mix booking details from different personas
   input?.focus();
   if (bookingPersona) bookingPersona.value = persona;
 
