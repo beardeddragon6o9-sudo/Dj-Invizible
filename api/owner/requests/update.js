@@ -126,7 +126,12 @@ export default async function handler(req, res) {
       });
       return res.status(200).json({ ok: true, request: updated });
       } finally {
-        await releaseBookingApproval(id, approvalToken);
+        try {
+          await releaseBookingApproval(id, approvalToken);
+        } catch (releaseError) {
+          // The TTL releases the lock if cleanup fails; never mask a saved booking.
+          console.error("[approval lock cleanup]", releaseError?.message || "lock_release_failed");
+        }
       }
     }
 
