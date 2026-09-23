@@ -78,6 +78,7 @@ export async function createBookingRequest(input) {
     createdAt: nowIso(),
     updatedAt: nowIso(),
     eventTypeName: input.eventTypeName || process.env.CAL_EVENT_TYPE_NAME || "Night gig",
+    artist: input.artist,
     venue: input.venue,
     date: input.date,
     timeWindow: input.timeWindow,
