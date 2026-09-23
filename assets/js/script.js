@@ -85,7 +85,7 @@ function greetFirstTime() {
   panel.classList.remove('hidden');
   input?.focus();
   speak("Welcome to DJ Invizible’s booth. I’m DJ Doom, your virtual guide for music, events and booking questions.");
-  speak("Looking for Midnight Maverick’s country side? Tap the other mascot.");
+  speak("Looking for DJ Invizible’s country side? That’s Midnight Maverick. Click the top-right mascot for everything country-related.");
 }
 
 // Swap positions (center/top-right) + theme/persona
