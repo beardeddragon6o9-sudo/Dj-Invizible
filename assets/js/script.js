@@ -85,7 +85,7 @@ function greetFirstTime() {
   panel.classList.remove('hidden');
   input?.focus();
   speak("Welcome to DJ Invizible’s booth. I’m DJ Doom, your virtual guide for music, events and booking questions.");
-  speak("Looking for DJ Invizible’s country side? That’s Midnight Maverick. Click the top-right mascot for everything country-related.");
+  speak("Looking for DJ Invizible’s country side? That’s Midnite Maverick. Click the top-right mascot for everything country-related.");
 }
 
 // Swap positions (center/top-right) + theme/persona
@@ -120,10 +120,10 @@ function applyPersona(persona){
   if (persona === 'invizible'){
     panelTitle.textContent = 'DJ INVIZIBLE';
     speak("Back at Invizible’s booth. What can I cue up for you?");
-    speak("Need the country set? Click Midnight Maverick above.");
+    speak("Need the country set? Click Midnite Maverick above.");
   } else {
-    panelTitle.textContent = 'MIDNIGHT MAVERICK';
-    speak("Midnight Maverick’s booth is open. Country remixes, rodeo energy, and a little twang when the moment calls for it.");
+    panelTitle.textContent = 'MIDNITE MAVERICK';
+    speak("Midnite Maverick’s booth is open. Country remixes, rodeo energy, and a little twang when the moment calls for it.");
     speak("Ask about booking, availability, or what the Maverick set includes.");
   }
 }

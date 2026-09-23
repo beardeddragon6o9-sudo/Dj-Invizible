@@ -11,7 +11,7 @@ assistant will offer to collect event details instead of making something up.
 
 ### Artist details
 - Preferred short bio and accomplishments he wants mentioned publicly
-- Genres and specialties for DJ Invizible, and separately for Midnight Maverick
+- Genres and specialties for DJ Invizible, and separately for Midnite Maverick
 - Types of events actually offered (weddings, private events, clubs, rodeos, etc.)
 - Approved public mixes, social-media and upcoming-show links
 - Where he is based and where he is willing to travel
