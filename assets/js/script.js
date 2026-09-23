@@ -67,10 +67,11 @@ function flashCue(text, duration = 4000) {
   }
 }
 
-function showPanel() {
+function showPanel(focusInput = true) {
   panel.inert = false;
   panel.classList.remove('hidden');
-  input?.focus();
+  // On compact screens the panel follows the stage; do not jump past the mascots on load.
+  if (focusInput) input?.focus();
 }
 function hidePanel() {
   panel.classList.add('hidden');
@@ -253,7 +254,7 @@ input?.addEventListener('blur', () => activeMascot()?.classList.remove('is-liste
 input?.addEventListener('input', updateQuickPrompts);
 
 window.addEventListener('load', () => {
-  showPanel();
+  showPanel(false);
   greetFirstTime();
   updateQuickPrompts();
 });
