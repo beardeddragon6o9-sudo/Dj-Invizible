@@ -148,6 +148,7 @@ function renderRequests() {
     const grid = document.createElement("div");
     grid.className = "grid";
     grid.innerHTML = `
+      <div class="kv"><div class="label">Requested act</div><div class="value">${req.artist || "-"}</div></div>
       <div class="kv"><div class="label">Venue</div><div class="value">${req.venue || "-"}</div></div>
       <div class="kv"><div class="label">Date</div><div class="value">${req.date || "-"}</div></div>
       <div class="kv"><div class="label">Time window</div><div class="value">${req.timeWindow || "-"}</div></div>
