@@ -6,6 +6,7 @@
   <title>DJ INVIZIBLE | Interactive AI Mascot</title>
   <link rel="stylesheet" href="assets/css/style.css" />
   <link rel="stylesheet" href="assets/css/stage-layout.css" />
+  <link rel="stylesheet" href="assets/css/chat-experience.css" />
 </head>
 
 <!-- Start on Invizible's theme; JS will toggle .theme-maverick when clicked -->
@@ -34,6 +35,7 @@
 <button id="mascot-invizible" class="mascot primary" aria-label="DJ Invizible">
   <img src="assets/img/invizible.png" alt="DJ Invizible Mascot" class="mascot-img portrait-art">
   <img src="assets/img/ChatGPT%20Image%20Sep%2023%2C%202026%2C%2001_27_51%20PM.png" alt="" class="mascot-img stage-art" aria-hidden="true">
+  <span class="summon-label">Summon Invizible</span>
 </button>
 
 <!-- Midnite Maverick (starts tucked top-right) -->
@@ -43,22 +45,33 @@
   <span class="summon-label">Summon Maverick</span>
 </button>
 
+    <div id="mascot-cue" class="hidden" aria-hidden="true"></div>
   </div><!-- masthead -->
 
   <div id="app">
-    <!-- Chat/Command panel -->
-    <div id="panel" class="hidden" aria-live="polite">
-      <div id="panel-header">
-        <span id="panel-title">DJ INVIZIBLE</span>
-        <button id="close-panel" type="button" aria-label="Close panel" title="Close chat">&times;</button>
+    <!-- The active mascot speaks through this booth-side chat bubble. -->
+    <section id="panel" class="hidden" role="region" aria-label="Chat with the DJ mascot">
+      <header id="panel-header">
+        <img id="chat-avatar" src="assets/img/invizible.png" alt="" aria-hidden="true" />
+        <div class="chat-identity">
+          <span id="panel-title">DJ INVIZIBLE</span>
+          <span id="panel-subtitle"><span class="presence-dot" aria-hidden="true"></span> AT THE TURNTABLES</span>
+        </div>
+        <button id="close-panel" type="button" aria-label="Close chat" title="Close chat">&times;</button>
+      </header>
+      <div id="messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>
+      <div id="quick-prompts" aria-label="Conversation starters">
+        <button type="button" class="quick-prompt" data-topic="booking">Book a date</button>
+        <button type="button" class="quick-prompt" data-topic="mixes">Explore mixes</button>
+        <button type="button" class="quick-prompt" data-topic="events">What do you play?</button>
       </div>
-      <div id="messages"></div>
       <form id="composer">
-        <input id="input" type="text" placeholder="Ask about music or bookings" aria-label="Your message to DJ Doom" autocomplete="off" />
-        <button type="submit" id="send">Send</button>
+        <input id="input" type="text" placeholder="Say something to Invizible..." aria-label="Message DJ Invizible's virtual mascot" autocomplete="off" />
+        <button type="submit" id="send">Send <span aria-hidden="true">↗</span></button>
         <input type="hidden" id="booking-persona" name="persona" value="invizible" />
       </form>
-    </div>
+      <p class="chat-footnote">A virtual conversation at the DJ booth</p>
+    </section>
 
     <!-- Sections (hidden in AI-only mode for now) -->
     <main id="stage">
