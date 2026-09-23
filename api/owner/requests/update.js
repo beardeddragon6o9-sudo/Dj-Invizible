@@ -125,7 +125,7 @@ export default async function handler(req, res) {
         bookingUid,
       });
       return res.status(200).json({ ok: true, request: updated });
-    }      } finally {
+      } finally {
         await releaseBookingApproval(id, approvalToken);
       }
     }
