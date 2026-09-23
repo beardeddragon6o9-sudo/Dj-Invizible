@@ -72,6 +72,13 @@
 }
 #mascot-invizible.primary:active,
 #mascot-maverick.primary:active { transform: translateX(-50%); }
+
+/* Maverick's art has slightly different framing than Invizible's. */
+#mascot-maverick.primary {
+  top: calc(var(--deck-y) - var(--booth-width) * .53 + 2px);
+}
+/* The summon badge belongs to the small alternate mascot, not the DJ on stage. */
+.mascot.primary .summon-label { display: none; }
 .mascot:focus-visible { outline: 2px solid #d9e9de; outline-offset: 6px; }
 body.ai-only #panel { top: auto; bottom: 8vh; right: 24px; max-height: 60svh; }
 .theme-maverick .deck { background: linear-gradient(165deg, #554332, #241b15 55%, #34271e); }
