@@ -1,10 +1,11 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DJ INVIZIBLE | Interactive AI Mascot</title>
   <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/stage-layout.css" />
 </head>
 
 <!-- Start on Invizible's theme; JS will toggle .theme-maverick when clicked -->
@@ -22,7 +23,8 @@
 
   <!-- Masthead: two mascots (Invizible primary, Maverick tucked behind) -->
   <div class="masthead">
-    <div class="deck">
+    <div class="deck" aria-hidden="true">
+      <div class="mixer"><span></span><span></span><span></span><span></span></div>
       <div class="disc left"></div>
       <div class="disc right"></div>
       <div class="stage-platform"></div>
@@ -30,7 +32,8 @@
 
     <!-- DJ Invizible (starts as primary/center) -->
 <button id="mascot-invizible" class="mascot primary" aria-label="DJ Invizible">
-  <img src="assets/img/invizible.png" alt="DJ Invizible Mascot" class="mascot-img">
+  <img src="assets/img/invizible.png" alt="DJ Invizible Mascot" class="mascot-img portrait-art">
+  <img src="assets/img/invizible-stage-v2.png" alt="" class="mascot-img stage-art" aria-hidden="true">
 </button>
 
 <!-- Midnite Maverick (starts tucked top-right) -->
@@ -39,6 +42,7 @@
   <span class="summon-label">Summon Maverick</span>
 </button>
 
+  </div><!-- masthead -->
 
   <div id="app">
     <!-- Chat/Command panel -->
@@ -71,12 +75,3 @@
   <script type="module" src="./assets/js/script.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
