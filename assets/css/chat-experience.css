@@ -251,3 +251,69 @@ body.ai-only #panel::before {
   #mascot-cue { transition: none; }
   .quick-prompt { transition: none; }
 }
+
+/* Living-mascot motion: animate only the artwork, never the carefully aligned booth. */
+#mascot-invizible.primary .stage-art,
+#mascot-maverick.primary .stage-art {
+  transform-origin: 50% 87%;
+  animation: djBreathing 6.5s ease-in-out infinite !important;
+  will-change: transform;
+  transition: filter .25s ease;
+}
+#mascot-maverick.primary .stage-art { animation-duration: 7.2s !important; }
+#mascot-invizible.primary.is-listening .stage-art,
+#mascot-maverick.primary.is-listening .stage-art {
+  animation: djListening 3.1s ease-in-out infinite !important;
+  filter: drop-shadow(0 7px 5px #0006) drop-shadow(0 0 11px rgba(var(--beam-color), .16)) !important;
+}
+#mascot-invizible.primary.is-thinking .stage-art,
+#mascot-maverick.primary.is-thinking .stage-art {
+  animation: djThinking 1.7s ease-in-out infinite !important;
+  filter: drop-shadow(0 7px 5px #0006) drop-shadow(0 0 17px rgba(var(--beam-color), .23)) !important;
+}
+#mascot-invizible.primary.is-acknowledging .stage-art,
+#mascot-maverick.primary.is-acknowledging .stage-art {
+  animation: djAcknowledges .54s ease-out 1 !important;
+}
+#mascot-invizible.primary.is-entering .stage-art,
+#mascot-maverick.primary.is-entering .stage-art {
+  animation: djEnters .72s cubic-bezier(.2,.75,.2,1) 1 both !important;
+}
+#mascot-invizible.primary.is-speaking .stage-art,
+#mascot-maverick.primary.is-speaking .stage-art {
+  animation: djAnswers .58s ease-in-out 2 !important;
+  filter: drop-shadow(0 7px 5px #0006) drop-shadow(0 0 12px rgba(var(--beam-color), .19)) !important;
+}
+@keyframes djBreathing {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1.5px) scale(1.003); }
+}
+@keyframes djListening {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1px) rotate(-.25deg); }
+}
+@keyframes djThinking {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1px) rotate(.3deg); }
+}
+@keyframes djAcknowledges {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(2px) rotate(.25deg); }
+}
+@keyframes djEnters {
+  from { opacity: .55; transform: translateY(5px) scale(.989); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes djAnswers {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(-2px) rotate(-.3deg); }
+}
+/* Reduced-motion visitors get the same conversation without character movement. */
+@media (prefers-reduced-motion: reduce) {
+  #mascot-invizible.primary .stage-art,
+  #mascot-maverick.primary .stage-art {
+    animation: none !important;
+    transition: none !important;
+    will-change: auto;
+  }
+}

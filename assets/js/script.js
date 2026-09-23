@@ -16,11 +16,18 @@ const btnMav = document.getElementById('mascot-maverick');
 // Keep the existing booking/chat transport and its message contract unchanged.
 const API_BASE = 'https://dj-invizible.vercel.app';
 const AI_ENDPOINT = `${API_BASE}/api/chat`;
-const chatHistory = [];
+let chatHistory = [];
+// Keep each DJ's booking context, transcript and unfinished input independent.
+const personaThreads = {
+  invizible: { history: chatHistory, nodes: document.createDocumentFragment(), draft: '', visited: false },
+  maverick: { history: [], nodes: document.createDocumentFragment(), draft: '', visited: false }
+};
 let activePersona = 'invizible';
 let chatBusy = false;
 let cueTimer;
 let speakingTimer;
+let acknowledgementTimer;
+let entranceTimer;
 
 const personaUI = {
   invizible: {
@@ -56,6 +63,27 @@ const promptText = {
 function activeMascot() {
   return activePersona === 'maverick' ? btnMav : btnInviz;
 }
+function setBoothStatus(status) {
+  if (panelSubtitle?.lastChild) panelSubtitle.lastChild.textContent = ' ' + status;
+}
+function acknowledgeMascot() {
+  const mascot = activeMascot();
+  if (!mascot) return;
+  window.clearTimeout(acknowledgementTimer);
+  mascot.classList.remove('is-acknowledging');
+  void mascot.offsetWidth;
+  mascot.classList.add('is-acknowledging');
+  acknowledgementTimer = window.setTimeout(() => mascot.classList.remove('is-acknowledging'), 560);
+}
+function enterBooth() {
+  const mascot = activeMascot();
+  if (!mascot) return;
+  window.clearTimeout(entranceTimer);
+  mascot.classList.remove('is-entering');
+  void mascot.offsetWidth;
+  mascot.classList.add('is-entering');
+  entranceTimer = window.setTimeout(() => mascot.classList.remove('is-entering'), 740);
+}
 
 function flashCue(text, duration = 4000) {
   if (!mascotCue) return;
@@ -77,6 +105,7 @@ function hidePanel() {
   panel.classList.add('hidden');
   panel.inert = true;
   activeMascot()?.classList.remove('is-listening');
+  setBoothStatus('AT THE TURNTABLES');
   flashCue('Tap me whenever you want to talk.', 4500);
 }
 
@@ -113,7 +142,9 @@ function startThinking() {
   typing.append(label, dots);
   messages.appendChild(typing);
   messages.scrollTop = messages.scrollHeight;
+  activeMascot()?.classList.remove('is-listening', 'is-acknowledging');
   activeMascot()?.classList.add('is-thinking');
+  setBoothStatus('MIXING A REPLY');
   flashCue('Mixing up a reply…', 0);
   return typing;
 }
@@ -121,6 +152,7 @@ function startThinking() {
 function finishThinking(typing) {
   typing.remove();
   activeMascot()?.classList.remove('is-thinking');
+  setBoothStatus('AT THE TURNTABLES');
 }
 
 function reactToReply() {
@@ -131,7 +163,11 @@ function reactToReply() {
   if (mascot) {
     void mascot.offsetWidth;
     mascot.classList.add('is-speaking');
-    speakingTimer = window.setTimeout(() => mascot.classList.remove('is-speaking'), 1500);
+    setBoothStatus('ON THE MIC');
+    speakingTimer = window.setTimeout(() => {
+      mascot.classList.remove('is-speaking');
+      setBoothStatus(document.activeElement === input ? 'LISTENING' : 'AT THE TURNTABLES');
+    }, 1250);
   }
   flashCue('Back to you! ↗', 3600);
 }
@@ -192,7 +228,9 @@ function greetFirstTime() {
   } catch (e) {
     // Private storage settings should never prevent someone chatting.
   }
+  personaThreads.invizible.visited = true;
   speak(returning ? personaUI.invizible.comeback : personaUI.invizible.greeting);
+  enterBooth();
   flashCue(personaUI.invizible.cue, 4500);
 }
 
@@ -205,10 +243,18 @@ function applyPersona(persona) {
   }
   if (persona === activePersona) {
     showPanel();
+    acknowledgeMascot();
     flashCue('Right here. What’s up?', 3300);
     return;
   }
-  activeMascot()?.classList.remove('is-thinking', 'is-speaking', 'is-listening');
+  // Move the rendered messages into the outgoing DJ's private in-memory thread.
+  const outgoing = personaThreads[activePersona];
+  outgoing.draft = input?.value ?? '';
+  while (messages.firstChild) outgoing.nodes.appendChild(messages.firstChild);
+  window.clearTimeout(speakingTimer);
+  window.clearTimeout(acknowledgementTimer);
+  window.clearTimeout(entranceTimer);
+  activeMascot()?.classList.remove('is-thinking', 'is-speaking', 'is-listening', 'is-acknowledging', 'is-entering');
   activePersona = persona;
   btnInviz.classList.toggle('primary', persona === 'invizible');
   btnInviz.classList.toggle('secondary', persona !== 'invizible');
@@ -218,21 +264,27 @@ function applyPersona(persona) {
   document.body.classList.toggle('theme-maverick', persona === 'maverick');
   document.body.classList.toggle('theme-invizible', persona === 'invizible');
 
-  messages.innerHTML = '';
-  chatHistory.length = 0;
-  if (input) input.value = '';
+  const incoming = personaThreads[persona];
+  chatHistory = incoming.history;
+  messages.appendChild(incoming.nodes);
+  messages.scrollTop = messages.scrollHeight;
+  if (input) input.value = incoming.draft;
   if (bookingPersona) bookingPersona.value = persona;
   panelTitle.textContent = personaUI[persona].name;
   if (chatAvatar) chatAvatar.src = personaUI[persona].avatar;
-  if (panelSubtitle) panelSubtitle.lastChild.textContent = ' AT THE TURNTABLES';
+  setBoothStatus('AT THE TURNTABLES');
   panel.setAttribute('aria-label', `Chat with ${personaUI[persona].name} mascot`);
   if (input) {
     input.placeholder = personaUI[persona].placeholder;
     input.setAttribute('aria-label', `Message the ${personaUI[persona].name} virtual mascot`);
   }
   showPanel();
-  speak(personaUI[persona].greeting);
+  if (!incoming.visited) {
+    speak(personaUI[persona].greeting);
+    incoming.visited = true;
+  }
   updateQuickPrompts();
+  enterBooth();
   flashCue(personaUI[persona].cue, 4300);
 }
 
@@ -248,9 +300,15 @@ quickPrompts?.addEventListener('click', event => {
 });
 
 input?.addEventListener('focus', () => {
-  if (!chatBusy) activeMascot()?.classList.add('is-listening');
+  if (!chatBusy) {
+    activeMascot()?.classList.add('is-listening');
+    setBoothStatus('LISTENING');
+  }
 });
-input?.addEventListener('blur', () => activeMascot()?.classList.remove('is-listening'));
+input?.addEventListener('blur', () => {
+  activeMascot()?.classList.remove('is-listening');
+  if (!chatBusy) setBoothStatus('AT THE TURNTABLES');
+});
 input?.addEventListener('input', updateQuickPrompts);
 
 window.addEventListener('load', () => {
