@@ -146,9 +146,8 @@ button,input,textarea{font:inherit}
   background: linear-gradient(180deg, var(--platform-bg1), var(--platform-bg2));
   border:1px solid rgba(255,255,255,.06); box-shadow: 0 12px 30px var(--glow);
 }
-/* Vinyl record faces are CSS-only until custom artwork is installed.
-   To add finished record artwork later, set --vinyl-art on .disc.left/right to url(...).
-   Keep the fallback gradients, so an unavailable image won't leave an empty platter. */
+/* The uploaded circular artwork spins with each disc. The gradient layers provide
+   a fallback if the artwork files are not yet present in assets/img/. */
 .disc{
   --vinyl-art: none;
   position:absolute;
@@ -168,9 +167,19 @@ button,input,textarea{font:inherit}
   box-shadow:0 12px 24px rgba(0,0,0,.5), inset 0 0 20px rgba(0,0,0,.5);
   animation: spinVinyl 24s linear infinite;
 }
-.disc.left{ left:68px }
-.disc.right{ right:68px; animation-duration:28s }
-/* Center labels and spindle holes: both rotate with the vinyl face. */
+.disc.left{
+  left:68px;
+  --vinyl-art: url('/assets/img/vinyl-tribe-called-quest.webp');
+}
+.disc.right{
+  right:68px;
+  --vinyl-art: url('/assets/img/vinyl-mmfood.webp');
+  animation-duration:28s;
+}
+/* Both supplied images already contain the record center and spindle hole.
+   Do not place the old generated center labels over the artwork. */
+.disc::before,.disc::after{ display:none }
+/* Original CSS center labels kept below for an easy future fallback. */
 .disc::before{
   content:"";
   position:absolute;
