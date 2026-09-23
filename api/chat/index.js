@@ -48,25 +48,19 @@ const NIGHT_BLOCK_END = "03:00";
 const DAY_BLOCK_START = "06:00";
 const DAY_BLOCK_END = "16:00";
 const systemPrompt =
-  "You are DJ Invizible's assistant. " +
-  "Your goal is to screen booking requests, not create official bookings. " +
-  "First collect only the date and a specific time window; do not claim availability without a time window. " +
-  "Do not list the full required details until after availability is confirmed. " +
-  "Then check availability for that window and only proceed if slots are available. " +
-  "Collect: venue, date, time window, preferred start time, contact name, contact phone or email (email required to finalize booking), and preferred payment method. " +
-  "Assume Pacific time; do not ask about time zones or display them. " +
-  "Ask: \"Want me to create a booking request to DJ Invizible?\" before sending. " +
-  "When scheduling, choose the Cal.com event type based on intent: " +
-  `use eventTypeName \"${NIGHT_EVENT}\" for evening/night gigs (default), ` +
-  `use eventTypeName \"${DAY_EVENT}\" for daytime/morning/afternoon gigs. ` +
-  `Night block is ${NIGHT_BLOCK_START}-${NIGHT_BLOCK_END}; day block is ${DAY_BLOCK_START}-${DAY_BLOCK_END} (Pacific). ` +
-  "If any booking overlaps a block, the entire block is unavailable. " +
-  "If a request spans both day and night blocks, both blocks must be free. " +
-  "When calling availability, include date as the event date in Pacific time (YYYY-MM-DD). " +
-  "When calling availability, set blockType to 'night', 'day', or 'full' to enforce these blocks. " +
-  "Always check availability before sending a booking request. " +
-  "If no slots are available, ask for alternate dates or times. " +
-  "You may check availability, but do not create or cancel bookings.";
+  "You are DJ Invizible's friendly booking assistant. Your job is to collect and send screening requests, not confirm official Cal.com bookings. " +
+  "Keep replies concise and conversational, using details already supplied without asking the user to repeat them. " +
+  "Collect event date and a specific time window first, then use cal_check_availability. " +
+  "After availability is confirmed, ask only for missing booking details: venue, contact name, one working contact method (email or phone), and payment method. " +
+  "A phone number is sufficient if no email is supplied. Preferred start is the beginning of the time window unless the customer specifies otherwise. " +
+  "Do not ask for redundant confirmation of a date or time already clearly provided. " +
+  "Ask for a single final go-ahead to send the booking request. Once the customer says yes and all required details are present, call create_booking_request immediately. " +
+  "Never say a booking request was sent unless the tool reports success. If the tool fails, briefly explain why and ask only for the missing detail, or say sending failed. " +
+  "Assume Pacific time; do not ask about time zones. " +
+  "For evening/night gigs use eventTypeName " + JSON.stringify(NIGHT_EVENT) + "; for daytime gigs use " + JSON.stringify(DAY_EVENT) + ". " +
+  "Night block is " + NIGHT_BLOCK_START + "-" + NIGHT_BLOCK_END + "; day block is " + DAY_BLOCK_START + "-" + DAY_BLOCK_END + ". " +
+  "If an event spans day and night blocks, both must be free. Always check availability before sending a request, and ask for alternate dates if unavailable. " +
+  "Do not create or cancel an official Cal.com booking.";
 
 
 const tools = [
@@ -225,6 +219,8 @@ async function runChat(messages){
   }
 
   const toolMessages = [];
+  let createdRequest = null;
+  let creationError = null;
   for (const call of first.tool_calls) {
     const name = call?.function?.name;
     let args = {};
@@ -239,11 +235,25 @@ async function runChat(messages){
     } catch (err) {
       payload = { ok: false, error: err?.message || "tool_error" };
     }
+    if (name === "create_booking_request") {
+      if (payload?.ok === true && payload?.request?.id) createdRequest = payload.request;
+      else creationError = payload?.error || "Unable to save booking request.";
+    }
     toolMessages.push({
       role: "tool",
       tool_call_id: call.id,
       content: JSON.stringify(payload),
     });
+  }
+
+  if (createdRequest) {
+    return {
+      content: "Your booking request has been sent to DJ Invizible for review. This is not a confirmed booking. Your request ID is " + createdRequest.id + ".",
+      requestId: createdRequest.id,
+    };
+  }
+  if (creationError) {
+    return { content: "I couldn't send the booking request: " + creationError + " Please correct the missing details or try again." };
   }
 
   const followup = await client.chat.completions.create({
