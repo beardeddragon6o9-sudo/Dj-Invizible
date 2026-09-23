@@ -7,7 +7,7 @@ export const ARTIST_INFO = {
     assistantName: "DJ Doom",
     // Artist positioning supplied by the site owner; confirm further specifics
     // with DJ Invizible before adding hard promises, rates or named event packages.
-    siteDescription: "Rooted in hip-hop and turntablism, DJ Invizible is an adaptable, open-format DJ. He reads the crowd and the occasion, keeps up with current music and emerging hits, and shapes energetic, responsive sets around the event's vibe rather than sticking to one fixed genre or playlist. For country-focused events, he also performs under his Midnight Maverick alias, a distinct country-oriented presentation of the same DJ.",
+    siteDescription: "Rooted in hip-hop and turntablism, DJ Invizible is an adaptable, open-format DJ. He reads the crowd and the occasion, keeps up with current music and emerging hits, and shapes energetic, responsive sets around the event's vibe rather than sticking to one fixed genre or playlist. For country-focused events, he also performs under his Midnite Maverick alias, a distinct country-oriented presentation of the same DJ.",
     confirmedGenres: null, // Add a detailed genre list only after discussing it with the DJ.
     confirmedServices: [
       "Tailored, crowd-responsive DJ sets for a broad range of event types.",
@@ -19,9 +19,9 @@ export const ARTIST_INFO = {
     bio: null,
   },
   maverick: {
-    stageName: "Midnight Maverick",
+    stageName: "Midnite Maverick",
     assistantName: "DJ Doom",
-    siteDescription: "Midnight Maverick is DJ Invizible's country-focused performing alias, not a separate DJ. The Maverick presentation emphasizes country music, country remixes and rodeo energy, while drawing on the same DJ's crowd-reading and ability to tailor a set to the occasion.",
+    siteDescription: "Midnite Maverick is DJ Invizible's country-focused performing alias, not a separate DJ. The Maverick presentation emphasizes country music, country remixes and rodeo energy, while drawing on the same DJ's crowd-reading and ability to tailor a set to the occasion.",
     confirmedGenres: null,
     confirmedServices: null,
     mixesUrl: null,
@@ -73,8 +73,8 @@ export function buildArtistPrompt(persona) {
     "Be conversational and concise: usually one to three short sentences, one question at a time when possible, never a giant details checklist.",
     "Music chat and ordinary questions are welcome. Only launch a booking workflow when the visitor actually expresses booking, quote or availability interest.",
     selected === "invizible"
-      ? "When the visitor first asks what music DJ Invizible plays, specializes in, or can DJ, ALWAYS include country in that very first answer: distinguish his hip-hop and turntablism roots from his flexible, crowd-responsive open-format work, AND mention that he also has a country-focused alias called Midnight Maverick. Briefly tell the visitor to tap the Midnight Maverick mascot on this page if they want to explore or discuss that country side, including country-event bookings. Do not wait for the visitor to say 'country' in a follow-up before mentioning it. Do not frame hip-hop/bass as his only specialties. Example style, not a mandatory script: 'His roots are in hip-hop and turntablism, but he DJs open-format sets tailored to the crowd. For country, he performs as Midnight Maverick. Tap the Midnight Maverick mascot here if you'd like to explore that side or discuss a country event.' For greetings, non-music questions, and routine booking replies, do not shoehorn in the alias. A music-interest answer need not immediately ask for an event date or venue unless the visitor expresses booking interest. Never pretend to click or switch the mascot for the visitor. Do not guarantee suitability for every event without checking its requirements."
-      : "Make clear that Midnight Maverick is DJ Invizible's country-focused alias, not a second person, when explaining the act or when visitors ask who he is. Keep the country-oriented presentation distinct without inventing event packages, prices or specific songs. Visitors can tap the DJ Invizible mascot to explore his broader open-format work; do not claim you switched it yourself.",
+      ? "When the visitor first asks what music DJ Invizible plays, specializes in, or can DJ, ALWAYS include country in that very first answer: distinguish his hip-hop and turntablism roots from his flexible, crowd-responsive open-format work, AND mention that he also has a country-focused alias called Midnite Maverick. Briefly tell the visitor to tap the Midnite Maverick mascot on this page if they want to explore or discuss that country side, including country-event bookings. Do not wait for the visitor to say 'country' in a follow-up before mentioning it. Do not frame hip-hop/bass as his only specialties. Example style, not a mandatory script: 'His roots are in hip-hop and turntablism, but he DJs open-format sets tailored to the crowd. For country, he performs as Midnite Maverick. Tap the Midnite Maverick mascot here if you'd like to explore that side or discuss a country event.' For greetings, non-music questions, and routine booking replies, do not shoehorn in the alias. A music-interest answer need not immediately ask for an event date or venue unless the visitor expresses booking interest. Never pretend to click or switch the mascot for the visitor. Do not guarantee suitability for every event without checking its requirements."
+      : "Make clear that Midnite Maverick is DJ Invizible's country-focused alias, not a second person, when explaining the act or when visitors ask who he is. Keep the country-oriented presentation distinct without inventing event packages, prices or specific songs. Visitors can tap the DJ Invizible mascot to explore his broader open-format work; do not claim you switched it yourself.",
     "Known website description: " + artist.siteDescription,
     "Artist details (null means not yet confirmed): " + JSON.stringify({
       confirmedGenres: artist.confirmedGenres,
