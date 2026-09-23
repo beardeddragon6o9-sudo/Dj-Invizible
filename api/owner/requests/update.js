@@ -1,3 +1,4 @@
+import { BOOKING_ZONE, blockWindow, hasBlockSlot, eventNameFor } from "../../_lib/bookingBlocks.js";
 export const config = { runtime: "nodejs" };
 
 import { readBody } from "../../_lib/http.js";
@@ -6,7 +7,7 @@ import {
   getBookingRequest,
   updateBookingRequest,
 } from "../../_lib/requestsStore.js";
-import { calCancelBooking, calCreateBooking } from "../../_lib/cal.js";
+import { calCancelBooking, calCreateBooking, calCheckAvailability } from "../../_lib/cal.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -31,7 +32,26 @@ export default async function handler(req, res) {
     if (!request) return res.status(404).json({ ok: false, error: "Request not found." });
 
     if (action === "approve") {
-      const start = body?.start;
+      const performanceStart = body?.start;
+      const eventTypeName = request.eventTypeName;
+      const block = eventTypeName === eventNameFor('day') ? 'day' : eventTypeName === eventNameFor('night') ? 'night' : null;
+      if (!block) return res.status(400).json({ ok: false, error: 'Unknown event type; check the request before approving.' });
+      const window = blockWindow(request.date, block);
+      const start = window.start;
+      const performanceMs = Date.parse(performanceStart);
+      if (!Number.isFinite(performanceMs) || performanceMs < Date.parse(start) || performanceMs >= Date.parse(window.end)) {
+        return res.status(400).json({ ok: false, error: 'Performance start must be inside the event date’s reservation block.' });
+      }
+      if (request.bookingUid || request.status === 'booked') {
+        return res.status(409).json({ ok: false, error: 'This request already has a booking.' });
+      }
+      if (request.status === 'booking_pending') {
+        return res.status(409).json({ ok: false, error: 'Check Cal.com for the previous booking attempt before retrying.' });
+      }
+      const available = await calCheckAvailability({ start, end: window.end, timeZone: BOOKING_ZONE, eventTypeName, format: 'range' });
+      if (!hasBlockSlot(available, window)) {
+        return res.status(409).json({ ok: false, error: 'The full reservation block is not available. Check Cal.com availability hours and duration.' });
+      }
       if (!start) return res.status(400).json({ ok: false, error: "Missing start time." });
       if (!request.contactEmail) {
         return res.status(400).json({ ok: false, error: "Contact email required to book." });
@@ -51,6 +71,9 @@ export default async function handler(req, res) {
           eventTypeName: request.eventTypeName,
           metadata: {
             requestId: request.id,
+            performanceStart,
+            reservationStart: start,
+            reservationEnd: window.end,
             venue: request.venue,
             timeWindow: request.timeWindow,
             preferredStart: request.preferredStart,
@@ -82,6 +105,8 @@ export default async function handler(req, res) {
         status: "booked",
         approvedAt: nowIso(),
         start,
+        performanceStart,
+        reservationEnd: window.end,
         booking,
         bookingUid,
       });

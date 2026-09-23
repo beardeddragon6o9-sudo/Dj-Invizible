@@ -1,3 +1,4 @@
+import { BOOKING_ZONE, localDate, blockWindow, hasBlockSlot, eventNameFor } from "../_lib/bookingBlocks.js";
 import { calCheckAvailability } from "../_lib/cal.js";
 import { createBookingRequest } from "../_lib/requestsStore.js";
 
@@ -61,6 +62,7 @@ const systemPrompt =
   `Night block is ${NIGHT_BLOCK_START}-${NIGHT_BLOCK_END}; day block is ${DAY_BLOCK_START}-${DAY_BLOCK_END} (Pacific). ` +
   "If any booking overlaps a block, the entire block is unavailable. " +
   "If a request spans both day and night blocks, both blocks must be free. " +
+  "When calling availability, include date as the event date in Pacific time (YYYY-MM-DD). " +
   "When calling availability, set blockType to 'night', 'day', or 'full' to enforce these blocks. " +
   "Always check availability before sending a booking request. " +
   "If no slots are available, ask for alternate dates or times. " +
@@ -76,6 +78,7 @@ const tools = [
       parameters: {
         type: "object",
         properties: {
+          date: { type: "string", description: "Event date in Pacific time, YYYY-MM-DD. Use the evening date for overnight gigs." },
           start: { type: "string", description: "ISO 8601 start datetime (UTC) or date." },
           end: { type: "string", description: "ISO 8601 end datetime (UTC) or date." },
           timeZone: { type: "string", description: "IANA time zone (e.g. America/Los_Angeles)." },
@@ -131,129 +134,22 @@ function addDaysToDate(dateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
-function getTimeZoneOffsetMs(date, timeZone) {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-  const parts = dtf.formatToParts(date);
-  const vals = {};
-  for (const part of parts) {
-    if (part.type !== "literal") vals[part.type] = part.value;
-  }
-  const asUtc = Date.UTC(
-    Number(vals.year),
-    Number(vals.month) - 1,
-    Number(vals.day),
-    Number(vals.hour),
-    Number(vals.minute),
-    Number(vals.second)
-  );
-  return asUtc - date.getTime();
-}
-
-function zonedTimeToUtcMs(dateStr, timeStr, timeZone) {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const [hour, minute] = timeStr.split(":").map(Number);
-  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
-  const offset = getTimeZoneOffsetMs(utcGuess, timeZone);
-  return utcGuess.getTime() - offset;
-}
-
-function buildBlockWindow(dateStr, blockType) {
-  if (blockType === "day") {
-    return {
-      start: `${dateStr}T${DAY_BLOCK_START}:00`,
-      end: `${dateStr}T${DAY_BLOCK_END}:00`,
-    };
-  }
-  const nextDate = addDaysToDate(dateStr, 1);
-  return {
-    start: `${dateStr}T${NIGHT_BLOCK_START}:00`,
-    end: `${nextDate}T${NIGHT_BLOCK_END}:00`,
-  };
-}
-
-function extractRanges(raw) {
-  const ranges = [];
-  const pushRange = (r) => {
-    if (r?.start && r?.end) ranges.push({ start: r.start, end: r.end });
-  };
-  const data = raw?.data || raw;
-  if (Array.isArray(data)) data.forEach(pushRange);
-  if (Array.isArray(data?.slots)) data.slots.forEach(pushRange);
-  if (Array.isArray(data?.ranges)) data.ranges.forEach(pushRange);
-  if (Array.isArray(data?.timeRanges)) data.timeRanges.forEach(pushRange);
-  if (Array.isArray(data?.availability)) data.availability.forEach(pushRange);
-  if (data && typeof data === "object") {
-    for (const value of Object.values(data)) {
-      if (Array.isArray(value)) value.forEach(pushRange);
-    }
-  }
-  return ranges;
-}
-
-function isBlockCovered(raw, blockStartMs, blockEndMs) {
-  const ranges = extractRanges(raw);
-  for (const range of ranges) {
-    const startMs = Date.parse(range.start);
-    const endMs = Date.parse(range.end);
-    if (Number.isFinite(startMs) && Number.isFinite(endMs)) {
-      if (startMs <= blockStartMs && endMs >= blockEndMs) return true;
-    }
-  }
-  return false;
-}
-
-async function checkBlockAvailability({ dateStr, blockType, eventTypeName, timeZone, baseArgs }) {
-  const blocks = [];
-  const needDay = blockType === "day" || blockType === "full";
-  const needNight = blockType === "night" || blockType === "full";
-  if (needDay) blocks.push("day");
-  if (needNight) blocks.push("night");
-
+async function checkBlockAvailability({ dateStr, blockType }) {
+  if (!['day', 'night', 'full'].includes(blockType)) throw new Error('Invalid block type.');
+  const blocks = blockType === 'full' ? ['day', 'night'] : [blockType];
   const results = [];
   for (const block of blocks) {
-    const window = buildBlockWindow(dateStr, block);
-    const blockStartMs = zonedTimeToUtcMs(
-      window.start.slice(0, 10),
-      window.start.slice(11, 16),
-      timeZone
-    );
-    const blockEndMs = zonedTimeToUtcMs(
-      window.end.slice(0, 10),
-      window.end.slice(11, 16),
-      timeZone
-    );
+    const window = blockWindow(dateStr, block);
     const raw = await calCheckAvailability({
-      ...baseArgs,
-      eventTypeName,
-      start: window.start,
-      end: window.end,
-      timeZone,
-      format: "range",
+      eventTypeName: eventNameFor(block),
+      start: window.start, end: window.end,
+      timeZone: BOOKING_ZONE, format: 'range',
     });
-    const available = isBlockCovered(raw, blockStartMs, blockEndMs);
-    results.push({
-      block,
-      window,
-      available,
-    });
+    results.push({ block, window, available: hasBlockSlot(raw, window) });
   }
-
-  return {
-    ok: true,
-    blockType,
-    date: dateStr,
-    blocks: results,
-    available: results.every((b) => b.available),
-  };
+  return { ok: true, blockType, date: dateStr, blocks: results,
+    available: results.every(b => b.available),
+    note: 'No suitable slot does not prove an existing booking; schedule or event duration can also prevent availability.' };
 }
 
 async function runTool(name, args) {
@@ -268,7 +164,7 @@ async function runTool(name, args) {
           if (eventName.includes("day")) blockType = "day";
           if (eventName.includes("night")) blockType = "night";
         }
-        const dateStr = extractDateOnly(args?.start || args?.end);
+        const dateStr = localDate(args?.date || args?.start || args?.end);
         if (blockType && dateStr) {
           return await checkBlockAvailability({
             dateStr,

@@ -107,8 +107,8 @@ function coalesce(a, b) {
 export async function resolveEventTypeRef(input = {}) {
   const env = getEnvEventRef();
   const ref = {
-    eventTypeId: coalesce(input.eventTypeId, env.eventTypeId),
-    eventTypeSlug: coalesce(input.eventTypeSlug, env.eventTypeSlug),
+    eventTypeId: coalesce(input.eventTypeId, input.eventTypeName || input.eventTypeSlug ? undefined : env.eventTypeId),
+    eventTypeSlug: coalesce(input.eventTypeSlug, input.eventTypeName ? undefined : env.eventTypeSlug),
     eventTypeName: coalesce(input.eventTypeName, env.eventTypeName),
     username: coalesce(input.username, env.username),
     teamSlug: coalesce(input.teamSlug, env.teamSlug),
@@ -209,7 +209,7 @@ export async function calCreateBooking(input = {}) {
     method: "POST",
     apiVersion: "2024-08-13",
     timeoutMs: 15000,
-    retry: 1,
+    retry: 0,
     retryDelayMs: 800,
     retryOn: [504, 524, 408],
     body: clean(payload),
