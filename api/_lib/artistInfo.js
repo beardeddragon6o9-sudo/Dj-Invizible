@@ -5,11 +5,15 @@ export const ARTIST_INFO = {
   invizible: {
     stageName: "DJ Invizible",
     assistantName: "DJ Doom",
-    // These are descriptions already used by the current website. Confirm with
-    // the artist before adding achievements, guarantees, or genre specialties.
-    siteDescription: "DJ Invizible's site describes hip-hop roots, modern bass and breakbeat, and turntablism.",
-    confirmedGenres: null,
-    confirmedServices: null,
+    // Artist positioning supplied by the site owner; confirm further specifics
+    // with DJ Invizible before adding hard promises, rates or named event packages.
+    siteDescription: "Rooted in hip-hop and turntablism, DJ Invizible is an adaptable, open-format DJ. He reads the crowd and the occasion, keeps up with current music and emerging hits, and shapes energetic, responsive sets around the event's vibe rather than sticking to one fixed genre or playlist.",
+    confirmedGenres: null, // Add a detailed genre list only after discussing it with the DJ.
+    confirmedServices: [
+      "Tailored, crowd-responsive DJ sets for a broad range of event types.",
+      "Music selections shaped to suit the audience, event and energy of the room.",
+      "Knowledge of current and trending music alongside his hip-hop and turntablism roots."
+    ],
     mixesUrl: null,
     socialUrl: null,
     bio: null,
@@ -68,6 +72,7 @@ export function buildArtistPrompt(persona) {
     "Match the visitor's tone. A simple hello deserves a brief, warm hello, not a booking intake. Answer their actual question before suggesting next steps.",
     "Be conversational and concise: usually one to three short sentences, one question at a time when possible, never a giant details checklist.",
     "Music chat and ordinary questions are welcome. Only launch a booking workflow when the visitor actually expresses booking, quote or availability interest.",
+    selected === "invizible" ? "When describing his range, distinguish his hip-hop and turntablism roots from his flexible, crowd-responsive open-format work. Do not imply he exclusively performs hip-hop or bass, and do not guarantee suitability for every event without checking its requirements." : "Keep Midnight Maverick's country-oriented presentation distinct, without assuming particular event packages or songs.",
     "Known website description: " + artist.siteDescription,
     "Artist details (null means not yet confirmed): " + JSON.stringify({
       confirmedGenres: artist.confirmedGenres,
