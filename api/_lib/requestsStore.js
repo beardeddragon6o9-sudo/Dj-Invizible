@@ -46,6 +46,26 @@ function validateRequest(input) {
   }
 }
 
+// Serialize approvals across browser tabs and serverless instances. The TTL
+// allows recovery if an execution terminates without running its finally block.
+export async function acquireBookingApproval(id) {
+  const kv = await getKv();
+  const token = crypto.randomUUID();
+  const acquired = await kv.set(`booking_approval_lock:${id}`, token, { nx: true, ex: 120 });
+  return acquired === "OK" ? token : null;
+}
+
+export async function releaseBookingApproval(id, token) {
+  const kv = await getKv();
+  const key = `booking_approval_lock:${id}`;
+  // Compare-and-delete atomically to avoid clearing a successor's lock.
+  await kv.eval(
+    'if redis.call("GET", KEYS[1]) == ARGV[1] then return redis.call("DEL", KEYS[1]) else return 0 end',
+    [key],
+    [token]
+  );
+}
+
 export function storeInfo() {
   return { type: KV_URL && KV_TOKEN ? "vercel_kv" : "unconfigured" };
 }
