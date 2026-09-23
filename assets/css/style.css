@@ -146,13 +146,57 @@ button,input,textarea{font:inherit}
   background: linear-gradient(180deg, var(--platform-bg1), var(--platform-bg2));
   border:1px solid rgba(255,255,255,.06); box-shadow: 0 12px 30px var(--glow);
 }
+/* Vinyl record faces are CSS-only until custom artwork is installed.
+   To add finished record artwork later, set --vinyl-art on .disc.left/right to url(...).
+   Keep the fallback gradients, so an unavailable image won't leave an empty platter. */
 .disc{
-  position:absolute; top:40px; width:180px; height:180px; border-radius:50%;
-  background: radial-gradient(circle at 50% 50%, #1b1b1b 0%, #0f0f0f 60%, #090909 100%);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.06); animation: spin 9s linear infinite;
+  --vinyl-art: none;
+  position:absolute;
+  top:40px;
+  width:180px;
+  height:180px;
+  border-radius:50%;
+  z-index:1;
+  background-image:
+    var(--vinyl-art),
+    radial-gradient(circle at center, transparent 0 34%, rgba(255,255,255,.06) 35%, transparent 36%, transparent 59%, rgba(255,255,255,.07) 60%, transparent 61%),
+    repeating-radial-gradient(circle at center, #111 0 2px, #1c1d1e 2px 3px, #101112 3px 5px),
+    conic-gradient(from 20deg, #111 0deg, #353638 24deg, #0b0b0c 72deg, #2a2b2d 150deg, #101011 260deg, #2d2f30 315deg, #111 360deg);
+  background-size:cover;
+  background-position:center;
+  border:2px solid rgba(255,255,255,.09);
+  box-shadow:0 12px 24px rgba(0,0,0,.5), inset 0 0 20px rgba(0,0,0,.5);
+  animation: spinVinyl 24s linear infinite;
 }
-.disc.left{ left:68px } .disc.right{ right:68px }
-@keyframes spin{ from{transform:rotate(0)} to{transform:rotate(360deg)} }
+.disc.left{ left:68px }
+.disc.right{ right:68px; animation-duration:28s }
+/* Center labels and spindle holes: both rotate with the vinyl face. */
+.disc::before{
+  content:"";
+  position:absolute;
+  inset:35%;
+  border-radius:50%;
+  background:radial-gradient(circle at center, #45494d 0 19%, #242a30 20% 69%, #5c646c 70% 73%, #1a2025 74% 100%);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 0 0 1px rgba(0,0,0,.8), inset 0 1px 5px rgba(255,255,255,.12);
+}
+.disc.right::before{
+  background:radial-gradient(circle at center, #7f6650 0 19%, #68462d 20% 69%, #ae8964 70% 73%, #3b2518 74% 100%);
+}
+.disc::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:6px;
+  height:6px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:#dadada;
+  box-shadow:0 1px 3px rgba(0,0,0,.9);
+}
+.disc:hover{ animation-play-state:paused }
+@keyframes spinVinyl{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 
 /* 7) MASCOTS — circular frame + swap positions (center <-> top-right) */
 .mascot{
