@@ -54,7 +54,7 @@
 #mascot-invizible.primary {
   width: calc(var(--booth-width) * .8); height: auto; aspect-ratio: 4 / 3;
   /* Set the hoodie hem near the rear edge of the deck, while hands overlap the vinyl. */
-  left: var(--stage-x); top: calc(var(--deck-y) - var(--booth-width) * .53);
+  left: var(--stage-x); top: calc(var(--deck-y) - var(--booth-width) * .53 - 4px);
   background: none; border-radius: 0; box-shadow: none; padding: 0;
   z-index: 3; transform: translateX(-50%);
 }
