@@ -201,68 +201,70 @@ async function runTool(name, args) {
   }
 }
 
-// --- Orchestrator
-async function runChat(messages){
+// --- Orchestrator: let the model finish availability checks AND request creation in one turn.
+async function runChat(messages) {
   const client = await getOpenAIClient();
-  const result = await client.chat.completions.create({
-    model: DEFAULT_MODEL,
-    temperature: TEMPERATURE,
-    messages: [{role:"system", content: systemPrompt}, ...messages],
-    tools,
-    tool_choice: "auto",
-  });
-
-  const first = result.choices?.[0]?.message;
-  if (!first?.tool_calls?.length) {
-    const content = first?.content ?? "";
-    return { content };
-  }
-
-  const toolMessages = [];
-  let createdRequest = null;
-  let creationError = null;
-  for (const call of first.tool_calls) {
-    const name = call?.function?.name;
-    let args = {};
-    try {
-      args = call?.function?.arguments ? JSON.parse(call.function.arguments) : {};
-    } catch {
-      args = {};
-    }
-    let payload;
-    try {
-      payload = await runTool(name, args);
-    } catch (err) {
-      payload = { ok: false, error: err?.message || "tool_error" };
-    }
-    if (name === "create_booking_request") {
-      if (payload?.ok === true && payload?.request?.id) createdRequest = payload.request;
-      else creationError = payload?.error || "Unable to save booking request.";
-    }
-    toolMessages.push({
-      role: "tool",
-      tool_call_id: call.id,
-      content: JSON.stringify(payload),
+  const today = localDate(new Date().toISOString());
+  const conversation = [
+    { role: 'system', content: systemPrompt + '\nToday in Pacific time is ' + today + '.' },
+    ...messages.filter(m => ['user', 'assistant'].includes(m?.role) && typeof m.content === 'string')
+      .map(m => ({ role: m.role, content: m.content })),
+  ];
+  // A tool result must be returned to the model WITH tools still enabled.
+  // Otherwise the assistant can promise to send a request without ever calling the store.
+  for (let round = 0; round < 6; round += 1) {
+    const result = await client.chat.completions.create({
+      model: DEFAULT_MODEL,
+      temperature: TEMPERATURE,
+      messages: conversation,
+      tools,
+      tool_choice: 'auto',
+      parallel_tool_calls: false,
     });
+    const reply = result.choices?.[0]?.message;
+    if (!reply) throw new Error('Empty AI response.');
+    if (!reply.tool_calls?.length) {
+      const content = reply.content || '';
+      // Never pass through an unsupported claim that a submission is underway.
+      if (/(?:i(?:'|’)?(?:ll|m)|i will|we(?:'|’)?(?:ll|re))\s+(?:now\s+)?(?:send|submit|forward|create|call)|(?:sending|submitting|forwarding|creating)\s+(?:the\s+)?(?:booking\s+)?request/i.test(content) &&
+          /(?:booking\s+)?request/i.test(content)) {
+        return { content: 'I have not submitted a booking request yet. Please ask me to send it again. Only a confirmation with a request ID means it was saved.' };
+      }
+      return { content: content || 'Sorry, I could not finish that response. Please try again.' };
+    }
+    conversation.push(reply);
+    for (const call of reply.tool_calls) {
+      const name = call.function?.name;
+      let payload;
+      try {
+        const args = JSON.parse(call.function?.arguments || '{}');
+        if (name === 'create_booking_request') {
+          // Re-check the full reservation block immediately before creating the request.
+          const block = args.eventTypeName === DAY_EVENT ? 'day' : 'night';
+          const check = await checkBlockAvailability({ dateStr: args.date, blockType: block });
+          if (!check.available) {
+            return { content: 'The reservation block is no longer available, so no request was submitted. Please choose another date.' };
+          }
+        }
+        payload = await runTool(name, args);
+        if (name === 'create_booking_request') {
+          if (!payload?.ok || !payload.request?.id) throw new Error('Booking request was not confirmed by the database.');
+          return {
+            content: 'Your booking request was submitted for DJ Invizible to review. It is not a confirmed gig yet. Request ID: ' + payload.request.id + '.',
+            requestId: payload.request.id,
+          };
+        }
+      } catch (err) {
+        console.error('[chat booking tool]', name, err?.message || 'tool_error');
+        if (name === 'create_booking_request') {
+          return { content: 'I could not confirm that the request was saved. Please check the owner inbox before retrying. Error: ' + (err?.message || 'tool_error') };
+        }
+        return { content: 'I could not complete the availability check, and no request was submitted. Please try again later.' };
+      }
+      conversation.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(payload) });
+    }
   }
-
-  if (createdRequest) {
-    return {
-      content: "Your booking request has been sent to DJ Invizible for review. This is not a confirmed booking. Your request ID is " + createdRequest.id + ".",
-      requestId: createdRequest.id,
-    };
-  }
-  if (creationError) {
-    return { content: "I couldn't send the booking request: " + creationError + " Please correct the missing details or try again." };
-  }
-
-  const followup = await client.chat.completions.create({
-    model: DEFAULT_MODEL,
-    temperature: TEMPERATURE,
-    messages: [{role:"system", content: systemPrompt}, ...messages, first, ...toolMessages],
-  });
-  const content = followup.choices?.[0]?.message?.content ?? "";
-  return { content };
+  return { content: 'I could not finish the booking process this turn. No request was submitted in this turn. Please try again.' };
 }
 
 // --- Handler
