@@ -1,7 +1,7 @@
 /* Stage composition. All pieces share one scale so hands stay over the vinyl. */
 .masthead {
   --booth-width: min(720px, calc(100vw - 430px));
-  --stage-x: calc((100vw - 400px) / 2);
+  --stage-x: 50vw; /* center the booth, turntables, and mascot together */
   --deck-y: clamp(340px, 53vh, 560px);
   min-height: 100svh;
   padding: 0;
@@ -53,7 +53,8 @@
 .stage-art { display: none; }
 #mascot-invizible.primary {
   width: calc(var(--booth-width) * .8); height: auto; aspect-ratio: 4 / 3;
-  left: var(--stage-x); top: calc(var(--deck-y) - var(--booth-width) * .45);
+  /* Set the hoodie hem near the rear edge of the deck, while hands overlap the vinyl. */
+  left: var(--stage-x); top: calc(var(--deck-y) - var(--booth-width) * .53);
   background: none; border-radius: 0; box-shadow: none; padding: 0;
   z-index: 3; transform: translateX(-50%);
 }
