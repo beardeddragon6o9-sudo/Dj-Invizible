@@ -1,6 +1,7 @@
 import { BOOKING_ZONE, localDate, blockWindow, hasBlockSlot, eventNameFor } from "../_lib/bookingBlocks.js";
 import { calCheckAvailability } from "../_lib/cal.js";
 import { createBookingRequest } from "../_lib/requestsStore.js";
+import { buildArtistPrompt, artistNameFor, normalizePersona } from "../_lib/artistInfo.js";
 
 export const config = { runtime: "nodejs" };
 
@@ -47,20 +48,19 @@ const NIGHT_BLOCK_START = "18:00";
 const NIGHT_BLOCK_END = "03:00";
 const DAY_BLOCK_START = "06:00";
 const DAY_BLOCK_END = "16:00";
-const systemPrompt =
-  "You are DJ Invizible's friendly booking assistant. Your job is to collect and send screening requests, not confirm official Cal.com bookings. " +
-  "Keep replies concise and conversational, using details already supplied without asking the user to repeat them. " +
-  "Collect event date and a specific time window first, then use cal_check_availability. " +
-  "After availability is confirmed, ask only for missing booking details: venue, contact name, one working contact method (email or phone), and payment method. " +
-  "A phone number is sufficient if no email is supplied. Preferred start is the beginning of the time window unless the customer specifies otherwise. " +
-  "Do not ask for redundant confirmation of a date or time already clearly provided. " +
-  "Ask for a single final go-ahead to send the booking request. Once the customer says yes and all required details are present, call create_booking_request immediately. " +
-  "Never say a booking request was sent unless the tool reports success. If the tool fails, briefly explain why and ask only for the missing detail, or say sending failed. " +
-  "Assume Pacific time; do not ask about time zones. " +
-  "For evening/night gigs use eventTypeName " + JSON.stringify(NIGHT_EVENT) + "; for daytime gigs use " + JSON.stringify(DAY_EVENT) + ". " +
-  "Night block is " + NIGHT_BLOCK_START + "-" + NIGHT_BLOCK_END + "; day block is " + DAY_BLOCK_START + "-" + DAY_BLOCK_END + ". " +
-  "If an event spans day and night blocks, both must be free. Always check availability before sending a request, and ask for alternate dates if unavailable. " +
-  "Do not create or cancel an official Cal.com booking.";
+const bookingPrompt = `
+BOOKING AND AVAILABILITY RULES:
+You can check Cal.com availability and save a booking request for owner review; you CANNOT promise, accept, cancel or create a confirmed gig yourself.
+Assume Pacific time and understand ordinary language such as "October 10, 9 till 1". Ask a brief clarifying question only if the date or AM/PM is genuinely ambiguous. Overnight performance end times fall on the next day. Never require visitors to write ISO dates or repeat an already clear date/time.
+The fixed calendar reservation blocks are separate from customer performance hours: night ${NIGHT_BLOCK_START} to ${NIGHT_BLOCK_END} next day, day ${DAY_BLOCK_START} to ${DAY_BLOCK_END}. Use event type ${JSON.stringify(NIGHT_EVENT)} for nighttime and ${JSON.stringify(DAY_EVENT)} for daytime.
+When a visitor supplies a date and performance window, call cal_check_availability (with blockType day or night and the Pacific event date) before reporting availability. A date alone is not enough to know which block they want: ask day or evening when unclear. Only claim availability after a successful tool check, and don't call unavailable time "already booked" unless the tool establishes that.
+When the customer wants a booking request, gather only what is missing: venue/address, date, time window, contact name, at least one working contact method (email preferred, phone accepted for screening), and preferred payment method. If only a phone is provided, note that an email will be required later for an official calendar reservation, but don't block submitting the review request.
+Infer preferredStart from the beginning of the performance window; keep performance hours distinct from the fixed reservation block. Never invent customer details, address, contact method, price or special event notes.
+Avoid repeating a checklist, asking for a timestamp format, reconfirming settled details, or asking more than two short questions in one reply. Do not ask for payment information like card numbers, deposits or banking details: only a preferred method such as cash or e-transfer.
+If all required details and the visitor's permission to submit are present, CALL create_booking_request immediately. A clear instruction like "send it", "book me in" in response to a proposed review request, or an initial request to send with full details is sufficient permission. Don't repeatedly ask for approval or narrate that you're sending it.
+Recheck availability before creating a booking request. If availability changed or a tool failed, explain accurately. After a successful save, the server itself will return the request ID; do not claim submission or invent an ID without the actual tool result.
+For quote-only questions, answer whatever confirmed pricing is available in the knowledge profile. If none is confirmed, tell them the DJ will need to quote the specific event; offer the existing booking-review process only if they want to proceed. Never give a pretend price or claim the DJ personally responded.
+Do not create or cancel an official Cal.com booking.`;
 
 
 const tools = [
@@ -146,7 +146,7 @@ async function checkBlockAvailability({ dateStr, blockType }) {
     note: 'No suitable slot does not prove an existing booking; schedule or event duration can also prevent availability.' };
 }
 
-async function runTool(name, args) {
+async function runTool(name, args, persona = "invizible") {
   switch (name) {
     case "cal_check_availability":
       {
@@ -194,6 +194,7 @@ async function runTool(name, args) {
         contactPhone: args?.contactPhone,
         paymentMethod: args?.paymentMethod,
         notes: args?.notes,
+        artist: artistNameFor(persona),
         source: "chat",
       });
     default:
@@ -202,11 +203,12 @@ async function runTool(name, args) {
 }
 
 // --- Orchestrator: let the model finish availability checks AND request creation in one turn.
-async function runChat(messages) {
+async function runChat(messages, selectedPersona = "invizible") {
+  const persona = normalizePersona(selectedPersona);
   const client = await getOpenAIClient();
   const today = localDate(new Date().toISOString());
   const conversation = [
-    { role: 'system', content: systemPrompt + '\nToday in Pacific time is ' + today + '.' },
+    { role: 'system', content: buildArtistPrompt(persona) + '\n' + bookingPrompt + '\nToday in Pacific time is ' + today + '.' },
     ...messages.filter(m => ['user', 'assistant'].includes(m?.role) && typeof m.content === 'string')
       .map(m => ({ role: m.role, content: m.content })),
   ];
@@ -246,7 +248,7 @@ async function runChat(messages) {
             return { content: 'The reservation block is no longer available, so no request was submitted. Please choose another date.' };
           }
         }
-        payload = await runTool(name, args);
+        payload = await runTool(name, args, persona);
         if (name === 'create_booking_request') {
           if (!payload?.ok || !payload.request?.id) throw new Error('Booking request was not confirmed by the database.');
           return {
@@ -274,7 +276,7 @@ export default async function handler(req, res){
   // Simple GET probe: /api/chat?q=hello
   if (method === "GET" && req.query?.q) {
     try {
-      const out = await runChat([{ role:"user", content: String(req.query.q) }]);
+      const out = await runChat([{ role:"user", content: String(req.query.q) }], req.query?.persona);
       return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
     } catch (err) {
       return res.status(500).json({ ok:false, error: err?.message || "server_error" });
@@ -292,7 +294,7 @@ export default async function handler(req, res){
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
     }
-    const out = await runChat(messages);
+    const out = await runChat(messages, body?.persona);
     return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
   } catch (err) {
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
