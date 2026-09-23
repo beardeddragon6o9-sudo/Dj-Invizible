@@ -303,6 +303,14 @@ requestList?.addEventListener("click", async (event) => {
   if (!card) return;
   const id = card.dataset.id;
   const action = button.dataset.action;
+  if (card.dataset.busy === "1") return;
+  // Lock the entire card before the first network call so a double click,
+  // decline, or retry cannot run while approval is in flight.
+  card.dataset.busy = "1";
+  const actionButtons = [...card.querySelectorAll("button[data-action]")];
+  actionButtons.forEach((item) => { item.disabled = true; });
+  const previousLabel = button.textContent;
+  if (action === "approve") button.textContent = "Booking…";
 
   try {
     if (action === "approve") {
@@ -337,6 +345,10 @@ requestList?.addEventListener("click", async (event) => {
     await loadRequests();
   } catch (err) {
     alert(err?.message || "Action failed.");
+  } finally {
+    card.dataset.busy = "0";
+    actionButtons.forEach((item) => { item.disabled = false; });
+    button.textContent = previousLabel;
   }
 });
 
