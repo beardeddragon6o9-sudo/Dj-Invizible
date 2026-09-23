@@ -1,7 +1,10 @@
 import crypto from "crypto";
 import { sendPushToAll } from "./pushStore.js";
 
-const HAS_KV = Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+// The restored Upstash integration is connected with Vercel's storage2_ prefix.
+// Never fall back to the archived integration or ephemeral serverless memory.
+const KV_URL = process.env.storage2_KV_REST_API_URL;
+const KV_TOKEN = process.env.storage2_KV_REST_API_TOKEN;
 let kvClient = null;
 
 const memory = {
@@ -18,10 +21,12 @@ function newId() {
 }
 
 async function getKv() {
-  if (!HAS_KV) return null;
+  if (!KV_URL || !KV_TOKEN) {
+    throw new Error("Booking database is not configured: missing storage2_ Upstash environment variables.");
+  }
   if (!kvClient) {
-    const mod = await import("@vercel/kv");
-    kvClient = mod.kv;
+    const { createClient } = await import("@vercel/kv");
+    kvClient = createClient({ url: KV_URL, token: KV_TOKEN });
   }
   return kvClient;
 }
@@ -42,7 +47,7 @@ function validateRequest(input) {
 }
 
 export function storeInfo() {
-  return { type: HAS_KV ? "vercel_kv" : "memory" };
+  return { type: KV_URL && KV_TOKEN ? "vercel_kv" : "unconfigured" };
 }
 
 export async function createBookingRequest(input) {
