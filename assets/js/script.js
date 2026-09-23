@@ -67,7 +67,6 @@ async function askAI(userText) {
 
 // State
 let activePersona = 'invizible'; // default landing
-const wait = (ms) => new Promise(res => setTimeout(res, ms));
 
 // Utils
 function addMsg(text, role='bot'){
@@ -79,23 +78,19 @@ function addMsg(text, role='bot'){
 }
 function speak(t){ addMsg(t, 'bot'); }
 
-// Greeting (first visit only)
-async function greetFirstTime(){
+// First visit: greet without a sales pitch or an unverified achievement.
+function greetFirstTime() {
   if (localStorage.getItem('dj_invizible_seen')) return;
   localStorage.setItem('dj_invizible_seen', '1');
-
   panel.classList.remove('hidden');
   input?.focus();
-
-  speak("Welcome to the digital home of Kelowna’s best DJ and Red Bull national finalist, DJ Invizible.");
-  await wait(450);
-  speak("I’m DJ Doom, his personal AI assistant. Ask me anything about mixes, shows, bookings, or the story.");
-  await wait(450);
-  speak("Here for Midnight Maverick’s country vibes? Click above me to summon him to the tables.");
+  speak("Welcome to DJ Invizible’s booth. I’m DJ Doom, your virtual guide for music, events and booking questions.");
+  speak("Looking for Midnight Maverick’s country side? Tap the other mascot.");
 }
 
 // Swap positions (center/top-right) + theme/persona
 function applyPersona(persona){
+  if (chatBusy) return; // Don't switch acts halfway through an active booking tool call.
   activePersona = persona;
 
   // swap classes so positions change: primary <-> secondary
@@ -128,7 +123,7 @@ function applyPersona(persona){
     speak("Need the country set? Click Midnight Maverick above.");
   } else {
     panelTitle.textContent = 'MIDNIGHT MAVERICK';
-    speak("🤠 Howdy! Midnight Maverick at your service — country-themed sets, rodeo energy, and boot-stompin’ remixes.");
+    speak("Midnight Maverick’s booth is open. Country remixes, rodeo energy, and a little twang when the moment calls for it.");
     speak("Ask about booking, availability, or what the Maverick set includes.");
   }
 }
@@ -146,28 +141,11 @@ window.addEventListener('load', () => {
   greetFirstTime();
 });
 
-// Router (simple demo)
-const routes = {
-  "mixes": () => speak(activePersona === 'maverick'
-    ? "Maverick mixes are heavy on country remixes and boot-scootin’ bass."
-    : "Invizible mixes: bass, breaks, turntablism, Red Bull finalist heat."),
-  "shows": () => speak("Upcoming shows lineup will appear here once wired."),
-  "book": () => speak(`Booking ${activePersona === 'maverick' ? 'Midnight Maverick' : 'DJ Invizible'} — tell me your date, city, and venue.`),
-  "about": () => speak(activePersona === 'maverick'
-    ? "Midnight Maverick is Invizible’s country-flavored alter ego—high-energy line-dance ready sets."
-    : "DJ Invizible blends hip-hop roots with modern bass & breakbeat."),
-  "contact": () => speak("Email info@djinvizible.com or tell me what you need.")
-};
-
 // Chat submit
 form?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
-  await askAI(text); // <-- sends text to OpenAI endpoint instead of static routes
+  await askAI(text);
 });
-
-/* Hook for real AI later:
-   POST /api/chat with { message, persona: activePersona } and render the reply.
-*/
