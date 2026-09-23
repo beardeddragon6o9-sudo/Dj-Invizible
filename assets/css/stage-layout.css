@@ -13,7 +13,8 @@
   left: var(--stage-x);
   top: var(--deck-y);
   width: var(--booth-width);
-  height: calc(var(--booth-width) * .28);
+  /* Extra tabletop depth exposes the full vinyl circles above the front panel. */
+  height: calc(var(--booth-width) * .31);
   transform: translateX(-50%);
   border-radius: 18px;
   background: linear-gradient(165deg, #343b3e, #171c20 55%, #282e32);
@@ -24,7 +25,7 @@
 .deck::after {
   content: '';
   position: absolute;
-  inset: 75% -1px -18px;
+  inset: 78% -1px -18px;
   border-radius: 0 0 18px 18px;
   background: linear-gradient(#272d31, #0e1114);
   border-top: 2px solid #687373;
@@ -85,7 +86,7 @@ body.ai-only #panel { top: auto; bottom: 8vh; right: 24px; max-height: 60svh; }
 @media (max-width: 1050px) {
   .masthead { --booth-width: min(660px, 88vw); --stage-x: 50vw; --deck-y: clamp(300px, 47vh, 450px); }
   body.ai-only #panel { position: relative; inset: auto; margin: 0 auto 24px; width: min(660px, 92vw); max-width: 92vw; max-height: 42svh; }
-  .masthead { min-height: calc(var(--deck-y) + var(--booth-width) * .28 + 75px); }
+  .masthead { min-height: calc(var(--deck-y) + var(--booth-width) * .31 + 75px); }
 }
 @media (max-width: 600px) {
   .masthead { --booth-width: 92vw; --deck-y: clamp(275px, 45svh, 390px); }
