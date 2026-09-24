@@ -1,0 +1,169 @@
+/* Stage branding and a restrained layer of club atmosphere.
+   Intentionally leaves the calibrated mascots, turntable sizes and chat alone. */
+.venue-sign {
+  position: absolute;
+  top: clamp(20px, 3.5svh, 39px);
+  left: clamp(18px, 2.6vw, 54px);
+  z-index: 8;
+  width: clamp(190px, 20vw, 315px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  color: #ecf1eb;
+  pointer-events: none;
+  user-select: none;
+}
+.venue-wordmark {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 0 12px rgba(241, 247, 241, .18));
+  animation: wordmarkGlow 12s ease-in-out infinite;
+}
+.venue-tagline {
+  display: block;
+  margin-left: 2px;
+  font-size: 10px;
+  font-weight: 580;
+  letter-spacing: .24em;
+  color: #adb9b3;
+  text-shadow: 0 1px 8px #000;
+}
+.venue-on-deck {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 6px;
+  margin-left: 1px;
+  color: #9faea7;
+  font-size: 10px;
+  font-weight: 550;
+  letter-spacing: .12em;
+}
+.venue-on-deck strong {
+  color: #d6e2d9;
+  font-weight: 650;
+  letter-spacing: .08em;
+}
+.venue-on-deck-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: #95b9a0;
+  box-shadow: 0 0 9px rgba(161, 212, 176, .55);
+}
+.theme-maverick .venue-sign { color: #f0d6b0; }
+.theme-maverick .venue-wordmark { filter: drop-shadow(0 0 12px rgba(245, 174, 92, .17)); }
+.theme-maverick .venue-tagline,
+.theme-maverick .venue-on-deck { color: #bfaa91; }
+.theme-maverick .venue-on-deck strong { color: #efd2a7; }
+.theme-maverick .venue-on-deck-dot {
+  background: #e7b56e;
+  box-shadow: 0 0 9px rgba(231, 181, 110, .6);
+}
+
+/* The light sits behind the performer and changes tint with the theme. */
+.venue-halo {
+  position: absolute;
+  top: 12svh;
+  left: 50%;
+  width: min(1040px, 80vw);
+  height: min(70svh, 660px);
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center,
+    rgba(var(--beam-color), .075) 0%,
+    rgba(var(--beam-color), .033) 38%,
+    transparent 72%);
+  filter: blur(28px);
+  opacity: .8;
+  animation: venueHalo 15s ease-in-out infinite;
+}
+
+/* A hint of reflected light under the deck anchors it in the virtual room. */
+.masthead::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  left: var(--stage-x);
+  top: calc(var(--deck-y) + var(--booth-width) * .23);
+  width: calc(var(--booth-width) * 1.4);
+  height: clamp(110px, 14svh, 185px);
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center,
+    rgba(var(--beam-color), .075) 0%,
+    rgba(var(--beam-color), .028) 38%,
+    transparent 74%);
+  filter: blur(26px);
+}
+.theme-maverick .masthead::before {
+  background: radial-gradient(ellipse at center,
+    rgba(202, 147, 87, .115) 0%,
+    rgba(202, 147, 87, .035) 40%,
+    transparent 74%);
+}
+
+/* Thin reflections read as powered hardware without taking attention from the vinyl. */
+.deck::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 24% 16%, rgba(var(--beam-color), .065), transparent 32%),
+    radial-gradient(ellipse at 77% 16%, rgba(var(--beam-color), .065), transparent 32%);
+}
+.mixer::before {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right,
+    #90bba0 0 4px, transparent 4px 7px,
+    #90bba0 7px 11px, transparent 11px 14px,
+    #d2b875 14px 18px, transparent 18px 21px,
+    #88978b 21px 25px, transparent 25px);
+  box-shadow: 0 0 7px rgba(156, 203, 158, .22);
+  opacity: .75;
+  animation: boardLevels 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.theme-maverick .mixer::before {
+  filter: sepia(.55) saturate(1.2);
+  box-shadow: 0 0 8px rgba(220, 151, 77, .29);
+}
+@keyframes wordmarkGlow {
+  0%, 100% { opacity: .88; }
+  50% { opacity: 1; }
+}
+@keyframes venueHalo {
+  0%, 100% { opacity: .69; }
+  50% { opacity: .87; }
+}
+@keyframes boardLevels {
+  0%, 100% { opacity: .54; }
+  35% { opacity: .94; }
+  72% { opacity: .69; }
+}
+@media (max-width: 700px) {
+  .venue-sign { width: clamp(165px, 45vw, 220px); top: 22px; left: 17px; gap: 5px; }
+  .venue-tagline { font-size: 8px; letter-spacing: .14em; }
+  .venue-on-deck { font-size: 9px; gap: 5px; margin-top: 3px; letter-spacing: .07em; }
+  .venue-on-deck strong { letter-spacing: .045em; }
+  .venue-halo { width: 98vw; height: 60svh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .venue-wordmark, .venue-halo, .mixer::before { animation: none !important; }
+}
