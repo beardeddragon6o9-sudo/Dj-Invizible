@@ -1,7 +1,6 @@
-// Visual merch showroom only. Purchases, prices, inventory and chat integration come later.
+// Hanging stage display; product concepts are not an inventory or checkout.
 const merchSection = document.getElementById('merch');
 const merchFeatured = document.getElementById('merch-featured');
-
 const merchConcepts = {
   'invizible-tee': {
     brand: 'invizible', type: 'tee',
@@ -29,65 +28,64 @@ const merchConcepts = {
   }
 };
 
-if (merchSection && merchFeatured) {
-  const cards = Array.from(merchSection.querySelectorAll('[data-merch-id]'));
-  const title = document.getElementById('merch-feature-name');
-  const category = document.getElementById('merch-feature-category');
-  const description = document.getElementById('merch-feature-description');
-  const featuredShape = document.getElementById('merch-feature-shape');
-  const featuredLogo = document.getElementById('merch-feature-logo');
-  const featuredMaverick = document.getElementById('merch-feature-maverick');
-  const art = merchFeatured.querySelector('.merch-feature-garment');
-  const prefersLessMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
-  // Reveal the rack once as it enters the viewport. Without JS/observer,
-  // all items remain visible and fully selectable.
-  if ('IntersectionObserver' in window && !prefersLessMotion) {
-    merchSection.dataset.merchAnimate = 'ready';
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some(entry => entry.isIntersecting)) return;
-      merchSection.classList.add('is-visible');
-      observer.disconnect();
-    }, { threshold: .08 });
-    observer.observe(merchSection);
-  } else {
-    merchSection.classList.add('is-visible');
-  }
-
-  function featureItem(id) {
-    const product = merchConcepts[id];
-    if (!product) return;
-
-    for (const card of cards) {
-      card.setAttribute('aria-pressed', String(card.dataset.merchId === id));
-    }
-
-    merchFeatured.dataset.brand = product.brand;
-    merchFeatured.dataset.merchId = id;
-    title.textContent = product.name;
-    category.textContent = product.category;
-    description.textContent = product.description;
-
-    featuredShape.setAttribute('href', `#merch-${product.type}`);
-    const inviziblePrint = product.brand === 'invizible';
-    featuredLogo.style.display = inviziblePrint ? '' : 'none';
-    featuredLogo.setAttribute('y', product.type === 'hoodie' ? '129' : '130');
-    featuredMaverick.toggleAttribute('hidden', inviziblePrint);
-
-    if (!prefersLessMotion && art) {
-      art.style.animation = 'none';
-      void art.offsetWidth;
-      art.style.animation = '';
-    }
-  }
-
-  merchSection.addEventListener('click', (event) => {
-    const card = event.target.closest('[data-merch-id]');
-    if (!card || !merchSection.contains(card)) return;
-    featureItem(card.dataset.merchId);
-    merchFeatured.scrollIntoView?.({
-      behavior: prefersLessMotion ? 'auto' : 'smooth',
-      block: 'nearest'
-    });
-  });
+const toggle = document.getElementById('merch-toggle');
+const cards = [...merchSection.querySelectorAll('.merch-item')];
+const rack = merchSection.querySelector('.merch-rack-viewport');
+const back = document.getElementById('merch-back');
+let selectedCard = null;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+function tellChat(product = null) {
+  window.dispatchEvent(new CustomEvent('merch-selection', { detail: product }));
 }
+function overview(focus = true) {
+  merchFeatured.hidden = true;
+  rack.hidden = false;
+  cards.forEach(card => card.setAttribute('aria-pressed', 'false'));
+  if (focus) selectedCard?.focus({ preventScroll: true });
+  selectedCard = null;
+  tellChat();
+}
+function setOpen(open) {
+  if (!open) { toggle.focus({ preventScroll: true }); overview(false); }
+  document.body.classList.toggle('merch-open', open);
+  merchSection.classList.toggle('is-open', open);
+  merchSection.inert = !open;
+  merchSection.setAttribute('aria-hidden', String(!open));
+  toggle.setAttribute('aria-expanded', String(open));
+  if (open) {
+    window.dispatchEvent(new CustomEvent('merch-open'));
+    cards[0].focus({ preventScroll: true });
+    if (window.matchMedia('(max-width: 1499px)').matches) {
+      merchSection.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth', block: 'start' });
+    }
+  }
+}
+toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+document.getElementById('merch-close').addEventListener('click', () => setOpen(false));
+back.addEventListener('click', () => overview());
+merchSection.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  event.preventDefault();
+  if (!merchFeatured.hidden) overview(); else setOpen(false);
+});
+cards.forEach(card => card.addEventListener('click', () => {
+  const product = merchConcepts[card.dataset.merchId];
+  selectedCard = card;
+  cards.forEach(item => item.setAttribute('aria-pressed', String(item === card)));
+  merchFeatured.dataset.brand = product.brand;
+  merchFeatured.dataset.merchId = card.dataset.merchId;
+  document.getElementById('merch-feature-name').textContent = product.name;
+  document.getElementById('merch-feature-category').textContent = product.category;
+  document.getElementById('merch-feature-description').textContent = product.description;
+  document.getElementById('merch-feature-shape').setAttribute('href', `#merch-${product.type}`);
+  document.getElementById('merch-feature-logo').style.display = product.brand === 'invizible' ? '' : 'none';
+  document.getElementById('merch-feature-maverick').toggleAttribute('hidden', product.brand === 'invizible');
+  rack.hidden = true;
+  merchFeatured.hidden = false;
+  tellChat(product);
+  back.focus({ preventScroll: true });
+}));
+document.getElementById('merch-chat').addEventListener('click', () => {
+  window.dispatchEvent(new CustomEvent('merch-chat'));
+});
