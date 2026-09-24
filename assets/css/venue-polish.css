@@ -200,6 +200,7 @@
   border-radius: 0 0 18px 18px;
   border: 1px solid var(--chassis-edge);
   border-top: 0;
+  border-bottom-color: #ffffff0b;
   background:
     linear-gradient(90deg, #ffffff08, transparent 3%, transparent 97%, #0003),
     linear-gradient(180deg, var(--face-top), var(--face-bottom));
@@ -228,73 +229,63 @@
   filter: drop-shadow(0 1px 0 rgba(0,0,0,.75));
 }
 
-/* Rounded metal side cheeks wrap over the face. Their directional light and
-   dark inner bevel give the side walls thickness without extra bottom outlines. */
+/* Side trim follows the projected tabletop, rolls over its front corner,
+   then returns down the fascia. The bend uses the same 78% datum as the lip:
+   the support extends 12px below the deck, hence the 9.36px correction. */
 .deck-side-support {
+  --trim-bend: calc(78% - 9.36px);
   position: absolute;
   z-index: 7;
   top: 0;
   bottom: -12px;
-  width: var(--cheek-width);
+  width: calc(var(--cheek-width) + 10px);
   border: 0;
+  border-radius: 16px 3px 3px 16px;
+  clip-path: polygon(
+    10px 0, 100% 0,
+    calc(100% - 8px) calc(var(--trim-bend) - 6px),
+    calc(100% - 9px) var(--trim-bend),
+    calc(100% - 8px) calc(var(--trim-bend) + 6px),
+    100% 100%, 10px 100%,
+    1px calc(var(--trim-bend) + 6px), 0 var(--trim-bend),
+    1px calc(var(--trim-bend) - 6px));
+  background:
+    linear-gradient(180deg,
+      transparent calc(var(--trim-bend) - 12px),
+      #ffffff09 calc(var(--trim-bend) - 3px),
+      #0001 calc(var(--trim-bend) + 5px),
+      #0004 calc(var(--trim-bend) + 18px), #0006 100%),
+    linear-gradient(90deg,
+      var(--side-dark), var(--side-lit) 24%, var(--side-mid) 48%,
+      var(--side-mid) 70%, var(--side-dark));
+  box-shadow: inset 0 1px 1px #ffffff20, inset 0 -8px 8px #0007;
   pointer-events: none;
 }
-.deck-side-support.left {
-  left: -1px;
-  border-radius: 18px 3px 3px 18px;
-  background: linear-gradient(90deg,
-    var(--side-dark), var(--side-lit) 16%, var(--side-mid) 42%,
-    var(--side-mid) 70%, var(--side-dark));
-  box-shadow: inset 0 1px 1px #ffffff20, inset 0 -8px 8px #0007;
-}
-.deck-side-support.right {
-  right: -1px;
-  border-radius: 3px 18px 18px 3px;
-  background: linear-gradient(90deg,
-    var(--side-dark), var(--side-mid) 30%, var(--side-mid) 58%,
-    var(--side-lit) 84%, var(--side-dark));
-  box-shadow: inset 0 1px 1px #ffffff14, inset 0 -8px 8px #0007;
-}
+.deck-side-support.left { left: -10px; }
+.deck-side-support.right { right: -10px; transform: scaleX(-1); }
 
-/* The rolled edge curves down into the side cheeks. Shared width keeps the
-   small corner returns aligned on desktop and mobile. */
+/* One rolled edge blends into the trim at the bend. A short fade at each
+   end replaces the separate curved caps so the lip reads as part of the face. */
 .deck-front-lip {
   position: absolute;
   z-index: 8;
-  left: calc(var(--cheek-width) + 6px);
-  right: calc(var(--cheek-width) + 6px);
+  left: calc(var(--cheek-width) - 9px);
+  right: calc(var(--cheek-width) - 9px);
   top: calc(78% - 2px);
   bottom: auto;
-  height: 7px;
+  height: 6px;
   border: 0;
-  border-radius: 0;
+  border-radius: 5px 5px 0 0;
   background: linear-gradient(180deg,
-    var(--side-mid), var(--chassis-highlight) 24%,
-    var(--face-top) 52%, var(--face-bottom));
-  box-shadow: 0 2px 3px #0004;
+    var(--side-mid), var(--chassis-highlight) 22%,
+    var(--face-top) 55%, transparent);
+  box-shadow: 0 2px 2px #0002;
+  -webkit-mask-image: linear-gradient(90deg,
+    transparent, #000 9px, #000 calc(100% - 9px), transparent);
+  mask-image: linear-gradient(90deg,
+    transparent, #000 9px, #000 calc(100% - 9px), transparent);
   pointer-events: none;
 }
-
-/* Quarter-round returns use the same seven-pixel bevel profile as the lip.
-   The reflection and contact shadow fade together as they turn down the rail. */
-.deck-front-lip::before,
-.deck-front-lip::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  width: 12px;
-  height: 14px;
-  background: radial-gradient(circle at 100% 12px,
-    transparent 4.5px, var(--face-bottom) 5px,
-    var(--face-top) 8.36px, var(--chassis-highlight) 10.32px,
-    var(--side-mid) 12px, transparent 12.5px);
-  filter: drop-shadow(0 2px 1px #0004);
-  -webkit-mask-image: linear-gradient(180deg, #000 25%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 25%, transparent 100%);
-  pointer-events: none;
-}
-.deck-front-lip::before { left: -12px; }
-.deck-front-lip::after { right: -12px; transform: scaleX(-1); }
 
 /* The fascia supplies the single lower silhouette; no stacked rail below it. */
 .stage-platform { display: none; }
