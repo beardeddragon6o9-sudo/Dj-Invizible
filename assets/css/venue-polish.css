@@ -172,42 +172,59 @@
 /* FINISHED BOOTH FRONT: one cohesive fascia, bevel and supporting rail.
    This file loads last, so these refinements supersede the original flat face.
    All record and mascot positioning rules deliberately remain unchanged. */
+/* FINISHED BOOTH FRONT: make the fascia feel built into the deck,
+   with actual visible side chassis and a recessed front face. */
 .deck {
   background:
-    linear-gradient(180deg, rgba(255,255,255,.065), transparent 20%),
+    linear-gradient(180deg, rgba(255,255,255,.07), transparent 20%),
     linear-gradient(165deg, #343b3e, #171c20 55%, #282e32);
   box-shadow:
     0 35px 60px #0009,
     inset 0 2px 2px #ffffff20,
-    inset 0 -5px 14px rgba(0,0,0,.22);
+    inset 0 -8px 18px rgba(0,0,0,.24);
+  overflow: visible;
 }
+
+/* Recess the front fascia inward so the deck's side thickness becomes visible */
 .deck::after {
-  inset: 78% -1px -12px;
-  border-radius: 0 0 15px 15px;
+  content: "";
+  position: absolute;
+  z-index: 5;
+  left: 14px;
+  right: 14px;
+  top: 58%;
+  bottom: -12px;
+  border-radius: 0 0 14px 14px;
   border: 1px solid #344047;
   border-top: 2px solid #768388;
   background:
-    linear-gradient(90deg, rgba(0,0,0,.26) 0%, transparent 5%,
-      transparent 95%, rgba(0,0,0,.29) 100%),
-    linear-gradient(180deg, #323b40 0%, #252d32 29%, #171e23 66%, #0b1014 100%);
+    linear-gradient(90deg,
+      rgba(255,255,255,.03) 0%,
+      rgba(255,255,255,0) 7%,
+      rgba(255,255,255,0) 93%,
+      rgba(0,0,0,.20) 100%
+    ),
+    linear-gradient(180deg, #323b40 0%, #252d32 28%, #171e23 66%, #0b1014 100%);
   box-shadow:
     inset 0 2px 1px #ffffff12,
     inset 0 -8px 15px rgba(0,0,0,.25),
-    0 10px 20px rgba(0,0,0,.15);
+    0 10px 20px rgba(0,0,0,.14);
 }
-/* Use the same exact SVG path as the header, with a brushed-metal opacity. */
+
+/* Same logo, still centered on the fascia */
 .deck-face-logo {
   position: absolute;
-  z-index: 6; /* above the fascia, below the bevel */
+  z-index: 6;
   left: 50%;
-  top: 80.3%;
+  top: 79.6%;
   width: 31%;
   transform: translateX(-50%);
   color: #b9c4c0;
-  opacity: .23;
+  opacity: .20;
   pointer-events: none;
   user-select: none;
 }
+
 .deck-wordmark {
   display: block;
   width: 100%;
@@ -215,11 +232,86 @@
   overflow: visible;
   filter: drop-shadow(0 1px 0 rgba(0,0,0,.75));
 }
+
+/* THIS is the important part:
+   actual full-height side chassis, not just a tiny connector */
+.deck-side-support {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  bottom: -12px;
+  width: 20px;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 18%, transparent 32%),
+    linear-gradient(180deg, #3c464c 0%, #2b3439 34%, #1a2126 70%, #0b1014 100%);
+  border: 1px solid #3a454b;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 -8px 12px rgba(0,0,0,.24),
+    0 6px 14px rgba(0,0,0,.20);
+}
+
+.deck-side-support.left {
+  left: 0;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 8px;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 8px;
+}
+
+.deck-side-support.right {
+  right: 0;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 16px;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 12px;
+}
+
+/* Outer vertical highlight */
+.deck-side-support.left::before,
+.deck-side-support.right::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: rgba(255,255,255,.15);
+}
+
+.deck-side-support.left::before {
+  left: 2px;
+}
+
+.deck-side-support.right::before {
+  right: 2px;
+}
+
+/* Inner seam where support meets fascia */
+.deck-side-support.left::after,
+.deck-side-support.right::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.28));
+}
+
+.deck-side-support.left::after {
+  right: 0;
+}
+
+.deck-side-support.right::after {
+  left: 0;
+}
+
+/* Lower bevel / lip */
 .deck-front-lip {
   position: absolute;
   z-index: 7;
-  left: 1%;
-  right: 1%;
+  left: 8px;
+  right: 8px;
   bottom: -16px;
   height: 15px;
   border: 1px solid #2c353b;
@@ -231,9 +323,11 @@
     0 8px 13px #0006;
   pointer-events: none;
 }
+
+/* Bottom base */
 .stage-platform {
   left: -2%;
-  transform: none; /* cancel the original centered translate so the wider base stays aligned */
+  transform: none;
   width: 104%;
   bottom: -35px;
   height: 21px;
@@ -241,31 +335,50 @@
   border-radius: 13px;
   border: 1px solid #30383d;
   border-top: 1px solid #55636a;
-  background:
-    linear-gradient(180deg, #303940 0%, #161c21 36%, #080c10 100%);
+  background: linear-gradient(180deg, #303940 0%, #161c21 36%, #080c10 100%);
   box-shadow:
     0 9px 20px #0009,
     inset 0 1px 0 #ffffff19,
     inset 0 -3px 5px #0009,
     0 0 16px rgba(var(--beam-color), .045);
 }
+
+/* Maverick warmer material response */
 .theme-maverick .deck::after {
   border-color: #4e4035;
   border-top-color: #806852;
   background:
-    linear-gradient(90deg, rgba(0,0,0,.27), transparent 5%,
-      transparent 95%, rgba(0,0,0,.31)),
+    linear-gradient(90deg,
+      rgba(255,255,255,.02) 0%,
+      rgba(255,255,255,0) 7%,
+      rgba(255,255,255,0) 93%,
+      rgba(0,0,0,.23) 100%
+    ),
     linear-gradient(180deg, #463b32 0%, #312920 29%, #211b17 66%, #120f0d 100%);
 }
+
 .theme-maverick .deck-face-logo {
   color: #d9ba90;
-  opacity: .23;
+  opacity: .22;
 }
+
+.theme-maverick .deck-side-support {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.02) 18%, transparent 32%),
+    linear-gradient(180deg, #4e4035 0%, #382d25 34%, #241c17 70%, #120e0c 100%);
+  border-color: #534338;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    inset 0 -8px 12px rgba(0,0,0,.24),
+    0 6px 14px rgba(0,0,0,.20);
+}
+
 .theme-maverick .deck-front-lip {
   border-color: #3c3129;
   border-top-color: #735943;
   background: linear-gradient(180deg, #352a22, #1b1612 58%, #0b0908);
 }
+
 .theme-maverick .stage-platform {
   border-color: #40342b;
   border-top-color: #80664b;
