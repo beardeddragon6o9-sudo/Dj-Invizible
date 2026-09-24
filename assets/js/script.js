@@ -14,9 +14,9 @@ const venueNowDeck = document.getElementById('venue-now-deck');
 const btnInviz = document.getElementById('mascot-invizible');
 const btnMav = document.getElementById('mascot-maverick');
 
-// Keep the existing booking/chat transport and its message contract unchanged.
-const API_BASE = 'https://dj-invizible.vercel.app';
-const AI_ENDPOINT = `${API_BASE}/api/chat`;
+// Use this deployment's own backend: preview talks to preview, production to production.
+// This preserves the same /api/chat request body and session handling.
+const AI_ENDPOINT = '/api/chat';
 let chatHistory = [];
 // Keep each DJ's booking context, transcript and unfinished input independent.
 const personaThreads = {
