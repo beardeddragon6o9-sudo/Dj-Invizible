@@ -219,8 +219,8 @@ const lunaTools = tools.map(({ function: fn }) => ({
 
 function safeChatContent(content) {
   // Never pass through a claim of submission without a verified database ID.
-  if (/(?:i(?:'|’)?(?:ll|m)|i will|we(?:'|’)?(?:ll|re))\\s+(?:now\\s+)?(?:send|submit|forward|create|call)|(?:sending|submitting|forwarding|creating)\\s+(?:the\\s+)?(?:booking\\s+)?request/i.test(content) &&
-      /(?:booking\\s+)?request/i.test(content)) {
+  if (/(?:i(?:'|’)?(?:ll|m)|i will|we(?:'|’)?(?:ll|re))\s+(?:now\s+)?(?:send|submit|forward|create|call)|(?:sending|submitting|forwarding|creating)\s+(?:the\s+)?(?:booking\s+)?request/i.test(content) &&
+      /(?:booking\s+)?request/i.test(content)) {
     return 'I have not submitted a booking request yet. Please ask me to send it again. Only a confirmation with a request ID means it was saved.';
   }
   return content || 'Sorry, I could not finish that response. Please try again.';
@@ -231,7 +231,7 @@ async function runLunaChat(messages, selectedPersona = 'invizible') {
   const client = await getOpenAIClient();
   const today = localDate(new Date().toISOString());
   const input = [
-    { role: 'system', content: buildArtistPrompt(persona) + '\\n' + bookingPrompt + '\\nToday in Pacific time is ' + today + '.' },
+    { role: 'system', content: buildArtistPrompt(persona) + '\n' + bookingPrompt + '\nToday in Pacific time is ' + today + '.' },
     ...messages.filter(m => ['user', 'assistant'].includes(m?.role) && typeof m.content === 'string')
       .map(m => ({ role: m.role, content: m.content })),
   ];
@@ -259,7 +259,7 @@ async function runLunaChat(messages, selectedPersona = 'invizible') {
         .flatMap(item => item.content || [])
         .filter(item => item.type === 'output_text')
         .map(item => item.text)
-        .join('\\n');
+        .join('\n');
       return { content: safeChatContent(content) };
     }
     // Return EVERY response item, including reasoning, along with the tool
