@@ -169,9 +169,6 @@
 }
 
 
-/* FINISHED BOOTH FRONT: one cohesive fascia, bevel and supporting rail.
-   This file loads last, so these refinements supersede the original flat face.
-   All record and mascot positioning rules deliberately remain unchanged. */
 /* FINISHED BOOTH FRONT: make the fascia feel built into the deck,
    with actual visible side chassis and a recessed front face. */
 .deck {
@@ -185,14 +182,14 @@
   overflow: visible;
 }
 
-/* Recess the front fascia inward so the deck's side thickness becomes visible */
+/* Recess the fascia below the full vinyl circles, with visible side thickness. */
 .deck::after {
   content: "";
   position: absolute;
   z-index: 5;
   left: 14px;
   right: 14px;
-  top: 58%;
+  top: 78%;
   bottom: -12px;
   border-radius: 0 0 14px 14px;
   border: 1px solid #344047;
@@ -233,8 +230,7 @@
   filter: drop-shadow(0 1px 0 rgba(0,0,0,.75));
 }
 
-/* THIS is the important part:
-   actual full-height side chassis, not just a tiny connector */
+/* Full-height structural side cheeks remain behind the face, not over the discs. */
 .deck-side-support {
   position: absolute;
   z-index: 4;
@@ -383,90 +379,4 @@
   border-color: #40342b;
   border-top-color: #80664b;
   background: linear-gradient(180deg, #49392a, #211913 38%, #0c0907);
-}/* SIDE CHASSIS / CONNECTORS
-   Ties the upper booth face into the lower lip and platform so the
-   console reads as one physical object instead of stacked pieces. */
-.deck-side-support {
-  position: absolute;
-  z-index: 5;
-  top: 77.8%;
-  bottom: -11px;
-  width: 16px;
-  pointer-events: none;
-  border-radius: 11px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.02) 12%, transparent 28%),
-    linear-gradient(180deg, #364046 0%, #2a3237 28%, #1a2126 68%, #0b1014 100%);
-  border: 1px solid #39454b;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.10),
-    inset 0 -8px 12px rgba(0,0,0,.22),
-    0 6px 14px rgba(0,0,0,.18);
-}
-
-.deck-side-support.left {
-  left: -1px;
-  border-top-left-radius: 15px;
-  border-top-right-radius: 8px;
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 8px;
-}
-
-.deck-side-support.right {
-  right: -1px;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 15px;
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 12px;
-}
-
-/* Outer highlight so it feels beveled against the black background */
-.deck-side-support.left::before,
-.deck-side-support.right::before {
-  content: "";
-  position: absolute;
-  top: 6px;
-  bottom: 8px;
-  width: 1px;
-  background: rgba(255,255,255,.16);
-  opacity: .8;
-}
-
-.deck-side-support.left::before {
-  left: 2px;
-}
-
-.deck-side-support.right::before {
-  right: 2px;
-}
-
-/* Inner seam where the side support meets the fascia */
-.deck-side-support.left::after,
-.deck-side-support.right::after {
-  content: "";
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  width: 1px;
-  background: rgba(0,0,0,.30);
-}
-
-.deck-side-support.left::after {
-  right: 1px;
-}
-
-.deck-side-support.right::after {
-  left: 1px;
-}
-
-/* Warm material response for Maverick's theme */
-.theme-maverick .deck-side-support {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.015) 12%, transparent 28%),
-    linear-gradient(180deg, #4c3f34 0%, #372d25 28%, #231c17 68%, #120e0c 100%);
-  border-color: #534338;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.08),
-    inset 0 -8px 12px rgba(0,0,0,.24),
-    0 6px 14px rgba(0,0,0,.20);
 }
