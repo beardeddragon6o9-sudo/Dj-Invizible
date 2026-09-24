@@ -10,6 +10,7 @@ const chatAvatar = document.getElementById('chat-avatar');
 const quickPrompts = document.getElementById('quick-prompts');
 const bookingPersona = document.getElementById('booking-persona');
 const mascotCue = document.getElementById('mascot-cue');
+const venueNowDeck = document.getElementById('venue-now-deck');
 const btnInviz = document.getElementById('mascot-invizible');
 const btnMav = document.getElementById('mascot-maverick');
 
@@ -263,6 +264,7 @@ function applyPersona(persona) {
 
   document.body.classList.toggle('theme-maverick', persona === 'maverick');
   document.body.classList.toggle('theme-invizible', persona === 'invizible');
+  if (venueNowDeck) venueNowDeck.textContent = personaUI[persona].name;
 
   const incoming = personaThreads[persona];
   chatHistory = incoming.history;
