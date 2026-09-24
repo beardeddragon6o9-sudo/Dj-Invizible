@@ -182,7 +182,6 @@
 }
 .theme-maverick .merch-hanger {color:#bd9d79}
 .merch-garment {
-  --fabric:#23302f;
   width:100%;max-width:222px;height:239px;flex-shrink:0;
   margin-top:-5px;
   overflow:visible;
