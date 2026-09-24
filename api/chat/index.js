@@ -6,7 +6,10 @@ import { buildArtistPrompt, artistNameFor, normalizePersona } from "../_lib/arti
 export const config = { runtime: "nodejs" };
 
 // --- Config & envs
-const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5-mini";
+// The experimental branch defaults to Luna. Production main still defaults to gpt-5-mini.
+// An explicitly configured CHAT_MODEL in Vercel always takes precedence.
+const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5.6-luna";
+const IS_LUNA_EXPERIMENT = DEFAULT_MODEL === "gpt-5.6-luna";
 function _safeTemp(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n)) return 0.7;      // default
@@ -217,7 +220,11 @@ async function runChat(messages, selectedPersona = "invizible") {
   for (let round = 0; round < 6; round += 1) {
     const result = await client.chat.completions.create({
       model: DEFAULT_MODEL,
-      temperature: TEMPERATURE,
+      // Reasoning models at non-none effort reject temperature. Keep the
+      // original temperature behavior for any non-Luna CHAT_MODEL override.
+      ...(IS_LUNA_EXPERIMENT
+        ? { reasoning_effort: 'low' }
+        : { temperature: TEMPERATURE }),
       messages: conversation,
       tools,
       tool_choice: 'auto',
@@ -277,7 +284,7 @@ export default async function handler(req, res){
   if (method === "GET" && req.query?.q) {
     try {
       const out = await runChat([{ role:"user", content: String(req.query.q) }], req.query?.persona);
-      return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
+      return res.status(200).json({ ok:true, model: DEFAULT_MODEL, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
     } catch (err) {
       return res.status(500).json({ ok:false, error: err?.message || "server_error" });
     }
@@ -295,7 +302,7 @@ export default async function handler(req, res){
       return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
     }
     const out = await runChat(messages, body?.persona);
-    return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
+    return res.status(200).json({ ok:true, model: DEFAULT_MODEL, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
   } catch (err) {
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
