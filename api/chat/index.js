@@ -240,6 +240,8 @@ async function runLunaChat(messages, selectedPersona = 'invizible') {
     const result = await client.responses.create({
       model: DEFAULT_MODEL,
       reasoning: { effort: 'low' },
+      // Carry encrypted reasoning between stateless function-call turns.
+      include: ['reasoning.encrypted_content'],
       input,
       tools: lunaTools,
       tool_choice: 'auto',
