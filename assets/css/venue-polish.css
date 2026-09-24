@@ -228,33 +228,40 @@
   filter: drop-shadow(0 1px 0 rgba(0,0,0,.75));
 }
 
-/* Rounded metal side cheeks wrap over the face. Their directional light and
-   dark inner bevel give the side walls thickness without extra bottom outlines. */
+/* Side trim follows the projected tabletop, rolls over its front corner,
+   then returns down the fascia. The bend uses the same 78% datum as the lip:
+   the support extends 12px below the deck, hence the 9.36px correction. */
 .deck-side-support {
+  --trim-bend: calc(78% - 9.36px);
   position: absolute;
   z-index: 7;
   top: 0;
   bottom: -12px;
-  width: var(--cheek-width);
+  width: calc(var(--cheek-width) + 10px);
   border: 0;
+  border-radius: 16px 3px 3px 16px;
+  clip-path: polygon(
+    10px 0, 100% 0,
+    calc(100% - 8px) calc(var(--trim-bend) - 6px),
+    calc(100% - 9px) var(--trim-bend),
+    calc(100% - 8px) calc(var(--trim-bend) + 6px),
+    100% 100%, 10px 100%,
+    1px calc(var(--trim-bend) + 6px), 0 var(--trim-bend),
+    1px calc(var(--trim-bend) - 6px));
+  background:
+    linear-gradient(180deg,
+      transparent calc(var(--trim-bend) - 8px),
+      #ffffff18 calc(var(--trim-bend) - 2px),
+      #0001 calc(var(--trim-bend) + 3px),
+      #0005 calc(var(--trim-bend) + 12px), #0007 100%),
+    linear-gradient(90deg,
+      var(--side-dark), var(--side-lit) 24%, var(--side-mid) 48%,
+      var(--side-mid) 70%, var(--side-dark));
+  box-shadow: inset 0 1px 1px #ffffff20, inset 0 -8px 8px #0007;
   pointer-events: none;
 }
-.deck-side-support.left {
-  left: -1px;
-  border-radius: 18px 3px 3px 18px;
-  background: linear-gradient(90deg,
-    var(--side-dark), var(--side-lit) 16%, var(--side-mid) 42%,
-    var(--side-mid) 70%, var(--side-dark));
-  box-shadow: inset 0 1px 1px #ffffff20, inset 0 -8px 8px #0007;
-}
-.deck-side-support.right {
-  right: -1px;
-  border-radius: 3px 18px 18px 3px;
-  background: linear-gradient(90deg,
-    var(--side-dark), var(--side-mid) 30%, var(--side-mid) 58%,
-    var(--side-lit) 84%, var(--side-dark));
-  box-shadow: inset 0 1px 1px #ffffff14, inset 0 -8px 8px #0007;
-}
+.deck-side-support.left { left: -10px; }
+.deck-side-support.right { right: -10px; transform: scaleX(-1); }
 
 /* The rolled edge curves down into the side cheeks. Shared width keeps the
    small corner returns aligned on desktop and mobile. */
