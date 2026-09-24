@@ -60,8 +60,57 @@
 </button>
 
     <div id="mascot-cue" class="hidden" aria-hidden="true"></div>
-    <a class="merch-stage-link" href="#merch">THE MERCH RACK <span aria-hidden="true">↓</span></a>
+    <button type="button" class="merch-stage-link" id="merch-toggle" aria-controls="merch" aria-expanded="false">MERCH <span aria-hidden="true">↓</span></button>
   </div><!-- masthead -->
+
+  <section id="merch" class="merch-showroom" aria-labelledby="merch-heading" aria-hidden="true" inert>
+    <header class="merch-heading-wrap">
+      <div><span class="merch-eyebrow">FROM THE BOOTH</span><h2 id="merch-heading">HANGING OUT</h2></div>
+      <button type="button" id="merch-close" aria-label="Retract merchandise">↑ Close</button>
+    </header>
+    <p class="merch-concept-note">Design previews · Tap a piece for a closer look.</p>
+    <div class="merch-rack-viewport" role="region" aria-label="Browse four hanging merch design concepts">
+      <div class="merch-rack-track">
+        <div class="merch-rack-items">
+          <button class="merch-item cool" type="button" data-merch-id="invizible-tee" aria-pressed="false" aria-controls="merch-featured">
+            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-tee"/><use class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="130" width="126" height="30"/></svg></span>
+            <span class="merch-item-info"><span class="merch-item-name">Invizible Tee</span><span class="merch-item-kind">T-SHIRT / CONCEPT</span></span>
+          </button>
+          <button class="merch-item cool" type="button" data-merch-id="invizible-hoodie" aria-pressed="false" aria-controls="merch-featured">
+            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-hoodie"/><use class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="129" width="126" height="30"/></svg></span>
+            <span class="merch-item-info"><span class="merch-item-name">Invizible Hoodie</span><span class="merch-item-kind">HOODIE / CONCEPT</span></span>
+          </button>
+          <button class="merch-item warm" type="button" data-merch-id="maverick-tee" aria-pressed="false" aria-controls="merch-featured">
+            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-tee"/><g class="merch-print-maverick"><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g></svg></span>
+            <span class="merch-item-info"><span class="merch-item-name">Maverick Tee</span><span class="merch-item-kind">T-SHIRT / CONCEPT</span></span>
+          </button>
+          <button class="merch-item warm" type="button" data-merch-id="maverick-hoodie" aria-pressed="false" aria-controls="merch-featured">
+            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-hoodie"/><g class="merch-print-maverick"><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g></svg></span>
+            <span class="merch-item-info"><span class="merch-item-name">Maverick Hoodie</span><span class="merch-item-kind">HOODIE / CONCEPT</span></span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="merch-featured" class="merch-featured" data-brand="invizible" hidden>
+      <button type="button" id="merch-back">← All pieces</button>
+      <div class="merch-feature-visual" aria-hidden="true">
+        <span class="merch-feature-glow"></span>
+        <svg class="merch-feature-garment" viewBox="0 0 260 280" focusable="false">
+          <use id="merch-feature-shape" href="#merch-tee"/>
+          <use id="merch-feature-logo" class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="130" width="126" height="30"/>
+          <g id="merch-feature-maverick" class="merch-print-maverick" hidden><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g>
+        </svg>
+      </div>
+      <div class="merch-feature-copy" aria-live="polite" aria-atomic="true">
+        <span class="merch-feature-kicker" id="merch-feature-category">INVIZIBLE / T-SHIRT</span>
+        <h3 id="merch-feature-name">Invizible Tee</h3>
+        <p id="merch-feature-description">A stripped-back Invizible wordmark on a dark everyday tee.</p>
+        <span class="merch-preview-badge">VISUAL CONCEPT · NOT YET FOR SALE</span>
+        <p class="merch-feature-next">Ask the DJ about this design. Sizes, prices and ordering are not available yet.</p>
+        <button type="button" id="merch-chat">Talk to the DJ ↗</button>
+      </div>
+    </div>
+  </section>
 
   <div id="app">
     <!-- The active mascot speaks through this booth-side chat bubble. -->
@@ -123,58 +172,6 @@
       <symbol id="merch-invizible-wordmark" viewBox="16 28 715 136"><path d="M653 154 L653 155 L658 158 L724 158 L725 157 L725 152 L724 151 L657 151Z M576 154 L577 157 L579 158 L631 158 L637 155 L631 151 L579 151 L577 152Z M653 91 L655 94 L658 95 L707 95 L709 93 L709 90 L707 88 L656 88Z M652 37 L657 40 L725 40 L725 34 L656 34Z M490 34 L489 35 L489 39 L490 40 L528 40 L529 41 L535 42 L545 51 L549 61 L549 67 L546 76 L539 84 L531 88 L495 88 L494 89 L491 89 L487 91 L487 92 L492 95 L531 95 L532 96 L536 96 L542 99 L549 105 L554 114 L554 117 L555 118 L555 128 L551 138 L547 143 L538 149 L532 150 L531 151 L491 151 L489 153 L489 156 L492 158 L528 158 L529 157 L535 157 L541 155 L548 151 L555 144 L559 137 L560 131 L561 130 L561 125 L562 124 L561 122 L561 115 L557 105 L548 95 L541 91 L546 87 L547 85 L548 85 L554 75 L554 72 L555 71 L555 58 L554 57 L554 54 L549 45 L544 40 L534 35 L531 35 L530 34Z M434 34 L432 36 L429 37 L434 40 L447 40 L448 41 L448 155 L449 157 L453 157 L454 158 L465 158 L466 157 L467 158 L471 155 L471 153 L468 151 L456 151 L454 149 L454 35 L453 34Z M292 34 L289 37 L292 40 L305 40 L307 42 L307 156 L310 158 L324 158 L331 155 L331 154 L326 151 L314 151 L313 150 L313 37 L310 34Z M26 34 L21 37 L25 40 L38 40 L39 41 L39 153 L40 156 L44 158 L56 158 L57 157 L59 158 L62 156 L62 153 L60 151 L47 151 L46 150 L46 37 L44 34Z M579 33 L576 36 L576 47 L579 50 L582 47 L582 36Z M416 33 L410 37 L405 45 L402 52 L393 66 L382 87 L377 94 L374 101 L372 103 L370 108 L368 110 L366 115 L356 131 L353 138 L348 145 L344 153 L344 156 L348 158 L413 158 L416 157 L417 153 L415 151 L354 151 L353 150 L355 148 L358 141 L360 139 L362 134 L364 132 L366 127 L376 111 L379 104 L384 97 L386 92 L396 76 L399 69 L401 67 L411 48 L413 46 L416 40Z M183 33 L182 35 L182 41 L184 44 L184 46 L187 51 L187 53 L190 58 L190 60 L193 65 L193 67 L196 72 L196 74 L199 79 L199 81 L211 107 L211 109 L216 119 L216 121 L220 128 L220 130 L228 147 L228 149 L231 155 L235 158 L237 156 L241 148 L241 146 L251 125 L251 116 L246 120 L238 137 L238 139 L234 145 L227 130 L227 128 L224 123 L224 121 L221 116 L221 114 L218 109 L216 102 L212 95 L210 88 L200 67 L200 65 L197 60 L197 58 L194 53 L194 51 L191 46 L191 44 L188 39 L188 37Z M78 33 L76 39 L76 51 L78 57 L80 59 L83 54 L83 50 L84 49 L106 79 L120 100 L123 103 L125 107 L131 114 L135 121 L146 135 L155 149 L162 157 L165 158 L165 156 L167 153 L167 138 L166 135 L163 133 L160 135 L160 141 L159 142 L157 140 L127 97 L124 94 L122 90 L119 87 L117 83 L114 80 L112 76 L109 73 L107 69 L104 66 L100 59 L94 52 L90 45 L84 37Z" fill="currentColor" fill-rule="evenodd"/></symbol>
     </defs>
   </svg>
-  <section id="merch" class="merch-showroom" aria-labelledby="merch-heading">
-    <div class="merch-heading-wrap">
-      <span class="merch-eyebrow">BACKSTAGE / 01</span>
-      <h2 id="merch-heading">THE MERCH RACK</h2>
-      <p class="merch-intro">A little something from the booth. Pick a piece and bring it into the spotlight.</p>
-      <p class="merch-concept-note">Design previews only. Sizes, pricing and ordering are coming later.</p>
-    </div>
-    <div class="merch-rack-viewport" role="region" aria-label="Browse four hanging merch design concepts" tabindex="0">
-      <div class="merch-rack-track">
-        <div class="merch-rack-rail" aria-hidden="true"></div>
-        <div class="merch-rack-post left" aria-hidden="true"></div>
-        <div class="merch-rack-post right" aria-hidden="true"></div>
-        <div class="merch-rack-items">
-          <button class="merch-item cool" type="button" data-merch-id="invizible-tee" aria-pressed="true" aria-controls="merch-featured">
-            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-tee"/><use class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="130" width="126" height="30"/></svg></span>
-            <span class="merch-item-info"><span class="merch-item-name">Invizible Tee</span><span class="merch-item-kind">T-SHIRT / CONCEPT</span></span>
-          </button>
-          <button class="merch-item cool" type="button" data-merch-id="invizible-hoodie" aria-pressed="false" aria-controls="merch-featured">
-            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-hoodie"/><use class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="129" width="126" height="30"/></svg></span>
-            <span class="merch-item-info"><span class="merch-item-name">Invizible Hoodie</span><span class="merch-item-kind">HOODIE / CONCEPT</span></span>
-          </button>
-          <button class="merch-item warm" type="button" data-merch-id="maverick-tee" aria-pressed="false" aria-controls="merch-featured">
-            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-tee"/><g class="merch-print-maverick"><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g></svg></span>
-            <span class="merch-item-info"><span class="merch-item-name">Maverick Tee</span><span class="merch-item-kind">T-SHIRT / CONCEPT</span></span>
-          </button>
-          <button class="merch-item warm" type="button" data-merch-id="maverick-hoodie" aria-pressed="false" aria-controls="merch-featured">
-            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-hoodie"/><g class="merch-print-maverick"><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g></svg></span>
-            <span class="merch-item-info"><span class="merch-item-name">Maverick Hoodie</span><span class="merch-item-kind">HOODIE / CONCEPT</span></span>
-          </button>
-        </div>
-        <div class="merch-rack-feet" aria-hidden="true"></div>
-      </div>
-    </div>
-    <p class="merch-scroll-hint">Swipe the rack to see every piece on smaller screens.</p>
-    <div id="merch-featured" class="merch-featured" data-brand="invizible">
-      <div class="merch-feature-visual" aria-hidden="true">
-        <span class="merch-feature-glow"></span>
-        <svg class="merch-feature-garment" viewBox="0 0 260 280" focusable="false">
-          <use id="merch-feature-shape" href="#merch-tee"/>
-          <use id="merch-feature-logo" class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="130" width="126" height="30"/>
-          <g id="merch-feature-maverick" class="merch-print-maverick" hidden><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g>
-        </svg>
-      </div>
-      <div class="merch-feature-copy" aria-live="polite" aria-atomic="true">
-        <span class="merch-feature-kicker" id="merch-feature-category">INVIZIBLE / T-SHIRT</span>
-        <h3 id="merch-feature-name">Invizible Tee</h3>
-        <p id="merch-feature-description">A stripped-back Invizible wordmark on a dark everyday tee.</p>
-        <span class="merch-preview-badge">VISUAL CONCEPT · NOT YET FOR SALE</span>
-        <p class="merch-feature-next">Next up: your DJ can help with size and ordering right here in the booth.</p>
-      </div>
-    </div>
-  </section>
   <script type="module" src="./assets/js/script.js"></script>
   <script type="module" src="./assets/js/merch-showroom.js"></script>
 </body>

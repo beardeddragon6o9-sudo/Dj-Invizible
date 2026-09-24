@@ -25,6 +25,19 @@ const personaThreads = {
 };
 let activePersona = 'invizible';
 let chatBusy = false;
+let selectedMerch = null;
+window.addEventListener('merch-open', () => showPanel(false));
+window.addEventListener('merch-selection', event => {
+  selectedMerch = event.detail;
+  if (!selectedMerch) return;
+  showPanel(false);
+  speak(`Checking out the ${selectedMerch.name}? This is a design preview for now—sizes, prices and ordering aren't available yet. What would you like to know about it?`);
+});
+window.addEventListener('merch-chat', () => {
+  showPanel(false);
+  panel.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+  input?.focus({ preventScroll: true });
+});
 let cueTimer;
 let speakingTimer;
 let acknowledgementTimer;
@@ -190,7 +203,10 @@ async function askAI(userText) {
     const res = await fetch(AI_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: chatHistory, persona: activePersona })
+      body: JSON.stringify({ messages: selectedMerch ? chatHistory.map((message, index) =>
+        index === chatHistory.length - 1 && message.role === 'user'
+          ? { ...message, content: `[Merch viewing context: ${selectedMerch.name}. ${selectedMerch.description} This is a visual concept only; sizes, prices, stock and ordering are not available. Do not invent those details or claim an order can be placed.]\n\n${message.content}` }
+          : message) : chatHistory, persona: activePersona })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.ok === false) {
