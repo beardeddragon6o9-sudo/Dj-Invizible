@@ -233,6 +233,7 @@
 }
 .stage-platform {
   left: -2%;
+  transform: none; /* cancel the original centered translate so the wider base stays aligned */
   width: 104%;
   bottom: -35px;
   height: 21px;
