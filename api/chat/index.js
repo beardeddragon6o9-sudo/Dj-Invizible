@@ -205,8 +205,102 @@ async function runTool(name, args, persona = "invizible") {
   }
 }
 
+// Luna's reasoning + function tools require the Responses API. Keep the
+// Chat Completions path below for the existing GPT-5 Mini fallback.
+// Convert the existing tool schemas without changing their parameters.
+// strict:false preserves the current optional booking/contact fields.
+const lunaTools = tools.map(({ function: fn }) => ({
+  type: 'function',
+  name: fn.name,
+  description: fn.description,
+  parameters: fn.parameters,
+  strict: false,
+}));
+
+function safeChatContent(content) {
+  // Never pass through a claim of submission without a verified database ID.
+  if (/(?:i(?:'|’)?(?:ll|m)|i will|we(?:'|’)?(?:ll|re))\\s+(?:now\\s+)?(?:send|submit|forward|create|call)|(?:sending|submitting|forwarding|creating)\\s+(?:the\\s+)?(?:booking\\s+)?request/i.test(content) &&
+      /(?:booking\\s+)?request/i.test(content)) {
+    return 'I have not submitted a booking request yet. Please ask me to send it again. Only a confirmation with a request ID means it was saved.';
+  }
+  return content || 'Sorry, I could not finish that response. Please try again.';
+}
+
+async function runLunaChat(messages, selectedPersona = 'invizible') {
+  const persona = normalizePersona(selectedPersona);
+  const client = await getOpenAIClient();
+  const today = localDate(new Date().toISOString());
+  const input = [
+    { role: 'system', content: buildArtistPrompt(persona) + '\\n' + bookingPrompt + '\\nToday in Pacific time is ' + today + '.' },
+    ...messages.filter(m => ['user', 'assistant'].includes(m?.role) && typeof m.content === 'string')
+      .map(m => ({ role: m.role, content: m.content })),
+  ];
+
+  for (let round = 0; round < 6; round += 1) {
+    const result = await client.responses.create({
+      model: DEFAULT_MODEL,
+      reasoning: { effort: 'low' },
+      input,
+      tools: lunaTools,
+      tool_choice: 'auto',
+      parallel_tool_calls: false,
+      store: false,
+    });
+    if (result.status === 'incomplete' || result.status === 'failed') {
+      throw new Error('Luna could not complete the response.');
+    }
+    const output = Array.isArray(result.output) ? result.output : [];
+    const calls = output.filter(item => item.type === 'function_call');
+    if (!calls.length) {
+      // output_text is an SDK convenience field. The fallback also works
+      // with a plain response and avoids exposing non-text reasoning items.
+      const content = result.output_text || output
+        .filter(item => item.type === 'message')
+        .flatMap(item => item.content || [])
+        .filter(item => item.type === 'output_text')
+        .map(item => item.text)
+        .join('\\n');
+      return { content: safeChatContent(content) };
+    }
+    // Return EVERY response item, including reasoning, along with the tool
+    // output. This is required for stateless reasoning/function-call turns.
+    input.push(...output);
+    for (const call of calls) {
+      const name = call.name;
+      let payload;
+      try {
+        const args = JSON.parse(call.arguments || '{}');
+        if (name === 'create_booking_request') {
+          const block = args.eventTypeName === DAY_EVENT ? 'day' : 'night';
+          const check = await checkBlockAvailability({ dateStr: args.date, blockType: block });
+          if (!check.available) {
+            return { content: 'The reservation block is no longer available, so no request was submitted. Please choose another date.' };
+          }
+        }
+        payload = await runTool(name, args, persona);
+        if (name === 'create_booking_request') {
+          if (!payload?.ok || !payload.request?.id) throw new Error('Booking request was not confirmed by the database.');
+          return {
+            content: 'Your booking request was submitted for ' + artistNameFor(persona) + ' to review. It is not a confirmed gig yet. Request ID: ' + payload.request.id + '.',
+            requestId: payload.request.id,
+          };
+        }
+      } catch (err) {
+        console.error('[chat booking tool]', name, err?.message || 'tool_error');
+        if (name === 'create_booking_request') {
+          return { content: 'I could not confirm that the request was saved. Please check the owner inbox before retrying. Error: ' + (err?.message || 'tool_error') };
+        }
+        return { content: 'I could not complete the availability check, and no request was submitted. Please try again later.' };
+      }
+      input.push({ type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(payload) });
+    }
+  }
+  return { content: 'I could not finish the booking process this turn. No request was submitted in this turn. Please try again.' };
+}
+
 // --- Orchestrator: let the model finish availability checks AND request creation in one turn.
 async function runChat(messages, selectedPersona = "invizible") {
+  if (IS_LUNA_EXPERIMENT) return runLunaChat(messages, selectedPersona);
   const persona = normalizePersona(selectedPersona);
   const client = await getOpenAIClient();
   const today = localDate(new Date().toISOString());
@@ -220,11 +314,7 @@ async function runChat(messages, selectedPersona = "invizible") {
   for (let round = 0; round < 6; round += 1) {
     const result = await client.chat.completions.create({
       model: DEFAULT_MODEL,
-      // Reasoning models at non-none effort reject temperature. Keep the
-      // original temperature behavior for any non-Luna CHAT_MODEL override.
-      ...(IS_LUNA_EXPERIMENT
-        ? { reasoning_effort: 'low' }
-        : { temperature: TEMPERATURE }),
+      temperature: TEMPERATURE,
       messages: conversation,
       tools,
       tool_choice: 'auto',
