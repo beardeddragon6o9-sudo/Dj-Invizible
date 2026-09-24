@@ -180,6 +180,7 @@
   --side-lit: #697579;
   --side-mid: #303a3f;
   --side-dark: #10161a;
+  --face-edge-glint: rgba(218, 232, 229, .12);
   background:
     linear-gradient(180deg, rgba(255,255,255,.07), transparent 20%),
     linear-gradient(165deg, #343b3e, #171c20 55%, #282e32);
@@ -201,7 +202,14 @@
   border: 1px solid var(--chassis-edge);
   border-top: 0;
   background:
-    linear-gradient(90deg, #ffffff08, transparent 3%, transparent 97%, #0003),
+    /* Glancing light at the transition from each side cheek onto the face. */
+    linear-gradient(90deg,
+      transparent 0%, transparent 2.5%,
+      #0004 2.8%, var(--face-edge-glint) 3.5%,
+      #ffffff07 5%, transparent 7.5%,
+      transparent 92.5%, #ffffff07 95%,
+      var(--face-edge-glint) 96.5%, #0004 97.2%,
+      transparent 97.5%, transparent 100%),
     linear-gradient(180deg, var(--face-top), var(--face-bottom));
   box-shadow: inset 0 -7px 12px #0005, 0 8px 12px #0004;
   pointer-events: none;
@@ -261,8 +269,8 @@
 .deck-front-lip {
   position: absolute;
   z-index: 8;
-  left: calc(var(--cheek-width) - 4px);
-  right: calc(var(--cheek-width) - 4px);
+  left: calc(var(--cheek-width) - 6px);
+  right: calc(var(--cheek-width) - 6px);
   top: calc(78% - 2px);
   bottom: auto;
   height: 7px;
@@ -307,6 +315,7 @@
   --side-lit: #88715b;
   --side-mid: #45392e;
   --side-dark: #1a140f;
+  --face-edge-glint: rgba(236, 191, 137, .11);
 }
 .theme-maverick .deck-face-logo {
   color: #d9ba90;
