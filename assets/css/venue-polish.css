@@ -169,46 +169,40 @@
 }
 
 
-/* FINISHED BOOTH FRONT: make the fascia feel built into the deck,
-   with actual visible side chassis and a recessed front face. */
+/* One continuous chassis: side walls and fascia share the outer deck edges.
+   Keep the face below the vinyl and tuck the foot rail behind its lower bevel. */
 .deck {
+  --chassis-edge: #424d52;
+  --chassis-highlight: #758185;
+  --face-top: #323b40;
+  --face-bottom: #10161a;
+  --lip-top: #20282d;
   background:
     linear-gradient(180deg, rgba(255,255,255,.07), transparent 20%),
     linear-gradient(165deg, #343b3e, #171c20 55%, #282e32);
-  box-shadow:
-    0 35px 60px #0009,
-    inset 0 2px 2px #ffffff20,
-    inset 0 -8px 18px rgba(0,0,0,.24);
+  box-shadow: 0 35px 60px #0009, inset 0 2px 2px #ffffff20;
   overflow: visible;
 }
 
-/* Recess the fascia below the full vinyl circles, with visible side thickness. */
 .deck::after {
   content: "";
   position: absolute;
   z-index: 5;
-  left: 14px;
-  right: 14px;
+  left: -1px;
+  right: -1px;
   top: 78%;
   bottom: -12px;
-  border-radius: 0 0 14px 14px;
-  border: 1px solid #344047;
-  border-top: 2px solid #768388;
+  border-radius: 0 0 18px 18px;
+  border: 1px solid var(--chassis-edge);
+  border-top: 1px solid var(--chassis-highlight);
   background:
-    linear-gradient(90deg,
-      rgba(255,255,255,.03) 0%,
-      rgba(255,255,255,0) 7%,
-      rgba(255,255,255,0) 93%,
-      rgba(0,0,0,.20) 100%
-    ),
-    linear-gradient(180deg, #323b40 0%, #252d32 28%, #171e23 66%, #0b1014 100%);
-  box-shadow:
-    inset 0 2px 1px #ffffff12,
-    inset 0 -8px 15px rgba(0,0,0,.25),
-    0 10px 20px rgba(0,0,0,.14);
+    linear-gradient(90deg, #ffffff08, transparent 3%, transparent 97%, #0003),
+    linear-gradient(180deg, var(--face-top), var(--face-bottom));
+  box-shadow: inset 0 1px 1px #ffffff12, inset 0 -5px 8px #0003;
+  pointer-events: none;
 }
 
-/* Same logo, still centered on the fascia */
+/* The emblem retains its existing position and subdued finish. */
 .deck-face-logo {
   position: absolute;
   z-index: 6;
@@ -221,7 +215,6 @@
   pointer-events: none;
   user-select: none;
 }
-
 .deck-wordmark {
   display: block;
   width: 100%;
@@ -230,153 +223,66 @@
   filter: drop-shadow(0 1px 0 rgba(0,0,0,.75));
 }
 
-/* Full-height structural side cheeks remain behind the face, not over the discs. */
+/* Flush side returns fade into the face instead of ending as separate bars. */
 .deck-side-support {
   position: absolute;
   z-index: 4;
-  top: 10px;
+  top: 0;
   bottom: -12px;
-  width: 20px;
+  width: clamp(9px, 2%, 14px);
+  border: 0;
+  box-shadow: none;
   pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 18%, transparent 32%),
-    linear-gradient(180deg, #3c464c 0%, #2b3439 34%, #1a2126 70%, #0b1014 100%);
-  border: 1px solid #3a454b;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.10),
-    inset 0 -8px 12px rgba(0,0,0,.24),
-    0 6px 14px rgba(0,0,0,.20);
 }
-
 .deck-side-support.left {
   left: 0;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 8px;
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 8px;
+  border-radius: 17px 0 0 17px;
+  background: linear-gradient(90deg, #ffffff14, #ffffff04 45%, transparent);
 }
-
 .deck-side-support.right {
   right: 0;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 16px;
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 12px;
+  border-radius: 0 17px 17px 0;
+  background: linear-gradient(270deg, #0005, #0001 55%, transparent);
 }
 
-/* Outer vertical highlight */
-.deck-side-support.left::before,
-.deck-side-support.right::before {
-  content: "";
-  position: absolute;
-  top: 8px;
-  bottom: 8px;
-  width: 1px;
-  background: rgba(255,255,255,.15);
-}
-
-.deck-side-support.left::before {
-  left: 2px;
-}
-
-.deck-side-support.right::before {
-  right: 2px;
-}
-
-/* Inner seam where support meets fascia */
-.deck-side-support.left::after,
-.deck-side-support.right::after {
-  content: "";
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  width: 2px;
-  background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.28));
-}
-
-.deck-side-support.left::after {
-  right: 0;
-}
-
-.deck-side-support.right::after {
-  left: 0;
-}
-
-/* Lower bevel / lip */
+/* A narrow bevel follows the same outline, with no bright horizontal joint. */
 .deck-front-lip {
   position: absolute;
   z-index: 7;
-  left: 8px;
-  right: 8px;
-  bottom: -16px;
-  height: 15px;
-  border: 1px solid #2c353b;
-  border-top: 1px solid #4d5a60;
-  border-radius: 0 0 14px 14px;
-  background: linear-gradient(180deg, #252e33 0%, #12181d 58%, #080c10 100%);
-  box-shadow:
-    inset 0 1px 0 #ffffff12,
-    0 8px 13px #0006;
+  left: -1px;
+  right: -1px;
+  bottom: -12px;
+  height: 9px;
+  border: 1px solid var(--chassis-edge);
+  border-top: 0;
+  border-radius: 0 0 18px 18px;
+  background: linear-gradient(180deg, transparent, var(--face-bottom) 55%, #090c0e);
+  box-shadow: 0 5px 7px #0005;
   pointer-events: none;
 }
 
-/* Bottom base */
+/* Only a slim foot is exposed below the enclosure; it no longer projects sideways. */
 .stage-platform {
-  left: -2%;
+  left: 1%;
   transform: none;
-  width: 104%;
-  bottom: -35px;
-  height: 21px;
-  z-index: 6;
-  border-radius: 13px;
-  border: 1px solid #30383d;
-  border-top: 1px solid #55636a;
-  background: linear-gradient(180deg, #303940 0%, #161c21 36%, #080c10 100%);
-  box-shadow:
-    0 9px 20px #0009,
-    inset 0 1px 0 #ffffff19,
-    inset 0 -3px 5px #0009,
-    0 0 16px rgba(var(--beam-color), .045);
+  width: 98%;
+  bottom: -17px;
+  height: 9px;
+  z-index: 4;
+  border-radius: 0 0 12px 12px;
+  border: 1px solid #242c30;
+  background: linear-gradient(180deg, var(--lip-top), #080b0d);
+  box-shadow: 0 8px 16px #0008;
 }
 
-/* Maverick warmer material response */
-.theme-maverick .deck::after {
-  border-color: #4e4035;
-  border-top-color: #806852;
-  background:
-    linear-gradient(90deg,
-      rgba(255,255,255,.02) 0%,
-      rgba(255,255,255,0) 7%,
-      rgba(255,255,255,0) 93%,
-      rgba(0,0,0,.23) 100%
-    ),
-    linear-gradient(180deg, #463b32 0%, #312920 29%, #211b17 66%, #120f0d 100%);
+.theme-maverick .deck {
+  --chassis-edge: #514438;
+  --chassis-highlight: #806852;
+  --face-top: #463b32;
+  --face-bottom: #17120f;
+  --lip-top: #30261e;
 }
-
 .theme-maverick .deck-face-logo {
   color: #d9ba90;
   opacity: .22;
-}
-
-.theme-maverick .deck-side-support {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.02) 18%, transparent 32%),
-    linear-gradient(180deg, #4e4035 0%, #382d25 34%, #241c17 70%, #120e0c 100%);
-  border-color: #534338;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.08),
-    inset 0 -8px 12px rgba(0,0,0,.24),
-    0 6px 14px rgba(0,0,0,.20);
-}
-
-.theme-maverick .deck-front-lip {
-  border-color: #3c3129;
-  border-top-color: #735943;
-  background: linear-gradient(180deg, #352a22, #1b1612 58%, #0b0908);
-}
-
-.theme-maverick .stage-platform {
-  border-color: #40342b;
-  border-top-color: #80664b;
-  background: linear-gradient(180deg, #49392a, #211913 38%, #0c0907);
 }
