@@ -6,7 +6,10 @@ import { buildArtistPrompt, artistNameFor, normalizePersona } from "../_lib/arti
 export const config = { runtime: "nodejs" };
 
 // --- Config & envs
-const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5-mini";
+// The experimental branch defaults to Luna. Production main still defaults to gpt-5-mini.
+// An explicitly configured CHAT_MODEL in Vercel always takes precedence.
+const DEFAULT_MODEL = process.env.CHAT_MODEL || "gpt-5.6-luna";
+const IS_LUNA_EXPERIMENT = DEFAULT_MODEL === "gpt-5.6-luna";
 function _safeTemp(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n)) return 0.7;      // default
@@ -202,8 +205,132 @@ async function runTool(name, args, persona = "invizible") {
   }
 }
 
+// Luna's reasoning + function tools require the Responses API. Keep the
+// Chat Completions path below for the existing GPT-5 Mini fallback.
+// Convert the existing tool schemas without changing their parameters.
+// strict:false preserves the current optional booking/contact fields.
+// Give country booking inquiries a predictable handoff, rather than allowing
+// a tool-enabled model to submit them under the wrong stage identity.
+function countryBookingHandoff(messages, persona) {
+  if (normalizePersona(persona) !== 'invizible') return null;
+  const latest = [...messages].reverse().find(m => m?.role === 'user' && typeof m.content === 'string');
+  const question = latest?.content || '';
+  const country = /\b(?:country|rodeo|honky[- ]tonk|western[- ](?:themed|style|music))\b/i.test(question);
+  const booking = /\b(?:book|booking|hire|available|availability|wedding|party|show|gig|event|reception|quote|rates?|pricing|cost)\b/i.test(question);
+  if (!country || !booking || /\b(?:no|not|without)\s+country\b/i.test(question) ||
+      (/\bcountry\s+club\b/i.test(question) && !/\bcountry[- ](?:style|music|theme|themed|show)\b/i.test(question))) {
+    return null;
+  }
+  return {
+    content: "A country-style event is Midnite Maverick territory 🤠. Tap the small Midnite Maverick mascot in the TOP-RIGHT corner of this page to switch over, then ask there about your wedding or show and its booking. It's the same DJ under his country alias, and the request will be labelled Midnite Maverick. Nothing has been submitted yet.",
+    handoffPersona: 'maverick',
+  };
+}
+
+function confirmedRequestReply(persona, requestId) {
+  const maverick = normalizePersona(persona) === 'maverick';
+  const name = artistNameFor(persona);
+  return (maverick ? '🤠 ' : '🎧 ') + name + 
+    (maverick ? ' country-show request is in!' : ' booking request is in!') +
+    ' It is queued for the DJ to review, not a confirmed gig yet. Request ID: ' + requestId + '.';
+}
+
+const lunaTools = tools.map(({ function: fn }) => ({
+  type: 'function',
+  name: fn.name,
+  description: fn.description,
+  parameters: fn.parameters,
+  strict: false,
+}));
+
+function safeChatContent(content) {
+  // Never pass through a claim of submission without a verified database ID.
+  if (/(?:i(?:'|’)?(?:ll|m)|i will|we(?:'|’)?(?:ll|re))\s+(?:now\s+)?(?:send|submit|forward|create|call)|(?:sending|submitting|forwarding|creating)\s+(?:the\s+)?(?:booking\s+)?request/i.test(content) &&
+      /(?:booking\s+)?request/i.test(content)) {
+    return 'I can help with your event details, but no request has been submitted yet. A request ID will appear once it is actually saved.';
+  }
+  return content || 'Sorry, I could not finish that response. Please try again.';
+}
+
+async function runLunaChat(messages, selectedPersona = 'invizible') {
+  const persona = normalizePersona(selectedPersona);
+  const client = await getOpenAIClient();
+  const today = localDate(new Date().toISOString());
+  const input = [
+    { role: 'system', content: buildArtistPrompt(persona) + '\n' + bookingPrompt + '\nToday in Pacific time is ' + today + '.' },
+    ...messages.filter(m => ['user', 'assistant'].includes(m?.role) && typeof m.content === 'string')
+      .map(m => ({ role: m.role, content: m.content })),
+  ];
+
+  for (let round = 0; round < 6; round += 1) {
+    const result = await client.responses.create({
+      model: DEFAULT_MODEL,
+      reasoning: { effort: 'low' },
+      // Carry encrypted reasoning between stateless function-call turns.
+      include: ['reasoning.encrypted_content'],
+      input,
+      tools: lunaTools,
+      tool_choice: 'auto',
+      parallel_tool_calls: false,
+      store: false,
+    });
+    if (result.status === 'incomplete' || result.status === 'failed') {
+      throw new Error('Luna could not complete the response.');
+    }
+    const output = Array.isArray(result.output) ? result.output : [];
+    const calls = output.filter(item => item.type === 'function_call');
+    if (!calls.length) {
+      // output_text is an SDK convenience field. The fallback also works
+      // with a plain response and avoids exposing non-text reasoning items.
+      const content = result.output_text || output
+        .filter(item => item.type === 'message')
+        .flatMap(item => item.content || [])
+        .filter(item => item.type === 'output_text')
+        .map(item => item.text)
+        .join('\n');
+      return { content: safeChatContent(content) };
+    }
+    // Return EVERY response item, including reasoning, along with the tool
+    // output. This is required for stateless reasoning/function-call turns.
+    input.push(...output);
+    for (const call of calls) {
+      const name = call.name;
+      let payload;
+      try {
+        const args = JSON.parse(call.arguments || '{}');
+        if (name === 'create_booking_request') {
+          const block = args.eventTypeName === DAY_EVENT ? 'day' : 'night';
+          const check = await checkBlockAvailability({ dateStr: args.date, blockType: block });
+          if (!check.available) {
+            return { content: 'The reservation block is no longer available, so no request was submitted. Please choose another date.' };
+          }
+        }
+        payload = await runTool(name, args, persona);
+        if (name === 'create_booking_request') {
+          if (!payload?.ok || !payload.request?.id) throw new Error('Booking request was not confirmed by the database.');
+          return {
+            content: confirmedRequestReply(persona, payload.request.id),
+            requestId: payload.request.id,
+          };
+        }
+      } catch (err) {
+        console.error('[chat booking tool]', name, err?.message || 'tool_error');
+        if (name === 'create_booking_request') {
+          return { content: 'I could not confirm that the request was saved. Please check the owner inbox before retrying. Error: ' + (err?.message || 'tool_error') };
+        }
+        return { content: 'I could not complete the availability check, and no request was submitted. Please try again later.' };
+      }
+      input.push({ type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(payload) });
+    }
+  }
+  return { content: 'I could not finish the booking process this turn. No request was submitted in this turn. Please try again.' };
+}
+
 // --- Orchestrator: let the model finish availability checks AND request creation in one turn.
 async function runChat(messages, selectedPersona = "invizible") {
+  const handoff = countryBookingHandoff(messages, selectedPersona);
+  if (handoff) return handoff;
+  if (IS_LUNA_EXPERIMENT) return runLunaChat(messages, selectedPersona);
   const persona = normalizePersona(selectedPersona);
   const client = await getOpenAIClient();
   const today = localDate(new Date().toISOString());
@@ -230,7 +357,7 @@ async function runChat(messages, selectedPersona = "invizible") {
       // Never pass through an unsupported claim that a submission is underway.
       if (/(?:i(?:'|’)?(?:ll|m)|i will|we(?:'|’)?(?:ll|re))\s+(?:now\s+)?(?:send|submit|forward|create|call)|(?:sending|submitting|forwarding|creating)\s+(?:the\s+)?(?:booking\s+)?request/i.test(content) &&
           /(?:booking\s+)?request/i.test(content)) {
-        return { content: 'I have not submitted a booking request yet. Please ask me to send it again. Only a confirmation with a request ID means it was saved.' };
+        return { content: 'I can help with your event details, but no request has been submitted yet. A request ID will appear once it is actually saved.' };
       }
       return { content: content || 'Sorry, I could not finish that response. Please try again.' };
     }
@@ -252,7 +379,7 @@ async function runChat(messages, selectedPersona = "invizible") {
         if (name === 'create_booking_request') {
           if (!payload?.ok || !payload.request?.id) throw new Error('Booking request was not confirmed by the database.');
           return {
-            content: 'Your booking request was submitted for DJ Invizible to review. It is not a confirmed gig yet. Request ID: ' + payload.request.id + '.',
+            content: confirmedRequestReply(persona, payload.request.id),
             requestId: payload.request.id,
           };
         }
@@ -277,7 +404,7 @@ export default async function handler(req, res){
   if (method === "GET" && req.query?.q) {
     try {
       const out = await runChat([{ role:"user", content: String(req.query.q) }], req.query?.persona);
-      return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
+      return res.status(200).json({ ok:true, model: DEFAULT_MODEL, ...(out.handoffPersona ? { handoffPersona: out.handoffPersona } : {}), text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
     } catch (err) {
       return res.status(500).json({ ok:false, error: err?.message || "server_error" });
     }
@@ -295,7 +422,7 @@ export default async function handler(req, res){
       return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
     }
     const out = await runChat(messages, body?.persona);
-    return res.status(200).json({ ok:true, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
+    return res.status(200).json({ ok:true, model: DEFAULT_MODEL, ...(out.handoffPersona ? { handoffPersona: out.handoffPersona } : {}), text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
   } catch (err) {
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
