@@ -103,9 +103,13 @@ export async function createBookingRequest(input) {
   }
 
   try {
+    // Show which stage identity the visitor selected right on the phone alert.
+    // The event type is still day/night, not the act's name.
+    const act = item.artist === "Midnite Maverick" ? "Midnite Maverick" : "DJ Invizible";
     await sendPushToAll({
-      title: "New booking request",
+      title: `${act === "Midnite Maverick" ? "🤠" : "🎧"} ${act} request`,
       body: `${item.eventTypeName || "Gig"} • ${item.date || ""} ${item.timeWindow || ""}`.trim(),
+      artist: act,
       url: "/owner/",
       requestId: item.id,
     });
