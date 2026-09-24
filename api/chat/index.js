@@ -209,6 +209,32 @@ async function runTool(name, args, persona = "invizible") {
 // Chat Completions path below for the existing GPT-5 Mini fallback.
 // Convert the existing tool schemas without changing their parameters.
 // strict:false preserves the current optional booking/contact fields.
+// Give country booking inquiries a predictable handoff, rather than allowing
+// a tool-enabled model to submit them under the wrong stage identity.
+function countryBookingHandoff(messages, persona) {
+  if (normalizePersona(persona) !== 'invizible') return null;
+  const latest = [...messages].reverse().find(m => m?.role === 'user' && typeof m.content === 'string');
+  const question = latest?.content || '';
+  const country = /\b(?:country|rodeo|honky[- ]tonk|western[- ](?:themed|style|music))\b/i.test(question);
+  const booking = /\b(?:book|booking|hire|available|availability|wedding|party|show|gig|event|reception|quote|rates?|pricing|cost)\b/i.test(question);
+  if (!country || !booking || /\b(?:no|not|without)\s+country\b/i.test(question) ||
+      (/\bcountry\s+club\b/i.test(question) && !/\bcountry[- ](?:style|music|theme|themed|show)\b/i.test(question))) {
+    return null;
+  }
+  return {
+    content: "A country-style event is Midnite Maverick territory 🤠. Tap the small Midnite Maverick mascot in the TOP-RIGHT corner of this page to switch over, then ask there about your wedding or show and its booking. It's the same DJ under his country alias, and the request will be labelled Midnite Maverick. Nothing has been submitted yet.",
+    handoffPersona: 'maverick',
+  };
+}
+
+function confirmedRequestReply(persona, requestId) {
+  const maverick = normalizePersona(persona) === 'maverick';
+  const name = artistNameFor(persona);
+  return (maverick ? '🤠 ' : '🎧 ') + name + 
+    (maverick ? ' country-show request is in!' : ' booking request is in!') +
+    ' It is queued for the DJ to review, not a confirmed gig yet. Request ID: ' + requestId + '.';
+}
+
 const lunaTools = tools.map(({ function: fn }) => ({
   type: 'function',
   name: fn.name,
@@ -221,7 +247,7 @@ function safeChatContent(content) {
   // Never pass through a claim of submission without a verified database ID.
   if (/(?:i(?:'|’)?(?:ll|m)|i will|we(?:'|’)?(?:ll|re))\s+(?:now\s+)?(?:send|submit|forward|create|call)|(?:sending|submitting|forwarding|creating)\s+(?:the\s+)?(?:booking\s+)?request/i.test(content) &&
       /(?:booking\s+)?request/i.test(content)) {
-    return 'I have not submitted a booking request yet. Please ask me to send it again. Only a confirmation with a request ID means it was saved.';
+    return 'I can help with your event details, but no request has been submitted yet. A request ID will appear once it is actually saved.';
   }
   return content || 'Sorry, I could not finish that response. Please try again.';
 }
@@ -283,7 +309,7 @@ async function runLunaChat(messages, selectedPersona = 'invizible') {
         if (name === 'create_booking_request') {
           if (!payload?.ok || !payload.request?.id) throw new Error('Booking request was not confirmed by the database.');
           return {
-            content: 'Your booking request was submitted for ' + artistNameFor(persona) + ' to review. It is not a confirmed gig yet. Request ID: ' + payload.request.id + '.',
+            content: confirmedRequestReply(persona, payload.request.id),
             requestId: payload.request.id,
           };
         }
@@ -302,6 +328,8 @@ async function runLunaChat(messages, selectedPersona = 'invizible') {
 
 // --- Orchestrator: let the model finish availability checks AND request creation in one turn.
 async function runChat(messages, selectedPersona = "invizible") {
+  const handoff = countryBookingHandoff(messages, selectedPersona);
+  if (handoff) return handoff;
   if (IS_LUNA_EXPERIMENT) return runLunaChat(messages, selectedPersona);
   const persona = normalizePersona(selectedPersona);
   const client = await getOpenAIClient();
@@ -329,7 +357,7 @@ async function runChat(messages, selectedPersona = "invizible") {
       // Never pass through an unsupported claim that a submission is underway.
       if (/(?:i(?:'|’)?(?:ll|m)|i will|we(?:'|’)?(?:ll|re))\s+(?:now\s+)?(?:send|submit|forward|create|call)|(?:sending|submitting|forwarding|creating)\s+(?:the\s+)?(?:booking\s+)?request/i.test(content) &&
           /(?:booking\s+)?request/i.test(content)) {
-        return { content: 'I have not submitted a booking request yet. Please ask me to send it again. Only a confirmation with a request ID means it was saved.' };
+        return { content: 'I can help with your event details, but no request has been submitted yet. A request ID will appear once it is actually saved.' };
       }
       return { content: content || 'Sorry, I could not finish that response. Please try again.' };
     }
@@ -351,7 +379,7 @@ async function runChat(messages, selectedPersona = "invizible") {
         if (name === 'create_booking_request') {
           if (!payload?.ok || !payload.request?.id) throw new Error('Booking request was not confirmed by the database.');
           return {
-            content: 'Your booking request was submitted for DJ Invizible to review. It is not a confirmed gig yet. Request ID: ' + payload.request.id + '.',
+            content: confirmedRequestReply(persona, payload.request.id),
             requestId: payload.request.id,
           };
         }
@@ -376,7 +404,7 @@ export default async function handler(req, res){
   if (method === "GET" && req.query?.q) {
     try {
       const out = await runChat([{ role:"user", content: String(req.query.q) }], req.query?.persona);
-      return res.status(200).json({ ok:true, model: DEFAULT_MODEL, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
+      return res.status(200).json({ ok:true, model: DEFAULT_MODEL, ...(out.handoffPersona ? { handoffPersona: out.handoffPersona } : {}), text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
     } catch (err) {
       return res.status(500).json({ ok:false, error: err?.message || "server_error" });
     }
@@ -394,7 +422,7 @@ export default async function handler(req, res){
       return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
     }
     const out = await runChat(messages, body?.persona);
-    return res.status(200).json({ ok:true, model: DEFAULT_MODEL, text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
+    return res.status(200).json({ ok:true, model: DEFAULT_MODEL, ...(out.handoffPersona ? { handoffPersona: out.handoffPersona } : {}), text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
   } catch (err) {
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });
   }
