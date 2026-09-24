@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="assets/css/chat-experience.css" />
   <link rel="stylesheet" href="assets/css/venue-polish.css" />
   <link rel="stylesheet" href="assets/css/merch-showroom.css" />
+  <link rel="stylesheet" href="assets/css/merch-chain-experiment.css" />
 </head>
 
 <!-- Start on Invizible's theme; JS will toggle .theme-maverick when clicked -->
@@ -60,7 +61,7 @@
 </button>
 
     <div id="mascot-cue" class="hidden" aria-hidden="true"></div>
-    <a class="merch-stage-link" href="#merch">THE MERCH RACK <span aria-hidden="true">↓</span></a>
+    <button class="merch-stage-link" id="merch-chain-trigger" type="button" aria-haspopup="dialog" aria-controls="merch-chain-experiment">MERCH <span aria-hidden="true">↗</span></button>
   </div><!-- masthead -->
 
   <div id="app">
@@ -175,7 +176,70 @@
       </div>
     </div>
   </section>
+
+  <!-- Experiment only: the original merch showroom above remains intact. -->
+  <div id="merch-chain-experiment" class="merch-chain-experiment" hidden aria-hidden="true">
+    <div class="merch-chain-backdrop" data-chain-close aria-hidden="true"></div>
+    <section class="merch-chain-scene" role="dialog" aria-modal="true" aria-labelledby="chain-heading" aria-describedby="chain-subheading" tabindex="-1">
+      <header class="merch-chain-header">
+        <div>
+          <span class="merch-chain-eyebrow">FROM THE ABYSS / CONCEPT TEST</span>
+          <h2 id="chain-heading">THE CHAIN DROP</h2>
+          <p id="chain-subheading">Four pieces. One rolling merch line. Pick a hanger to step into the spotlight.</p>
+        </div>
+        <button class="merch-chain-close" type="button" aria-label="Close the merch line" data-chain-close>✕</button>
+      </header>
+      <div class="merch-chain-window" tabindex="0" role="region" aria-label="Four hanging apparel concept designs; swipe sideways on smaller screens">
+        <div class="merch-chain-conveyor">
+          <svg class="merch-chain-links" viewBox="0 0 1200 44" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="chain-metal" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stop-color="#8f9897"/><stop offset=".35" stop-color="#444f50"/>
+                <stop offset=".7" stop-color="#151b1e"/><stop offset="1" stop-color="#667173"/>
+              </linearGradient>
+              <pattern id="chain-loop" patternUnits="userSpaceOnUse" width="38" height="44">
+                <rect x="1" y="14" width="32" height="15" rx="7.5" fill="none" stroke="url(#chain-metal)" stroke-width="5"/>
+                <path d="M21 12 Q28 22 21 32" fill="none" stroke="#778383" stroke-width="3.5" stroke-linecap="round"/>
+              </pattern>
+            </defs>
+            <path d="M0 22 H1200" stroke="#050708" stroke-width="25" stroke-linecap="round"/>
+            <rect x="0" y="0" width="1200" height="44" fill="url(#chain-loop)"/>
+          </svg>
+          <div class="merch-chain-clothes">
+<button class="chain-card cool" type="button" data-chain-product="invizible-tee" aria-pressed="true" aria-controls="chain-picked">
+            <span class="chain-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-tee"/><use class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="130" width="126" height="30"/></svg></span>
+            <span class="chain-card-info"><span class="chain-card-name">Invizible Tee</span><span class="chain-card-kind">T-SHIRT / CONCEPT</span></span>
+          </button>
+<button class="chain-card cool" type="button" data-chain-product="invizible-hoodie" aria-pressed="false" aria-controls="chain-picked">
+            <span class="chain-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-hoodie"/><use class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="129" width="126" height="30"/></svg></span>
+            <span class="chain-card-info"><span class="chain-card-name">Invizible Hoodie</span><span class="chain-card-kind">HOODIE / CONCEPT</span></span>
+          </button>
+<button class="chain-card warm" type="button" data-chain-product="maverick-tee" aria-pressed="false" aria-controls="chain-picked">
+            <span class="chain-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-tee"/><g class="merch-print-maverick"><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g></svg></span>
+            <span class="chain-card-info"><span class="chain-card-name">Maverick Tee</span><span class="chain-card-kind">T-SHIRT / CONCEPT</span></span>
+          </button>
+<button class="chain-card warm" type="button" data-chain-product="maverick-hoodie" aria-pressed="false" aria-controls="chain-picked">
+            <span class="chain-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-hoodie"/><g class="merch-print-maverick"><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g></svg></span>
+            <span class="chain-card-info"><span class="chain-card-name">Maverick Hoodie</span><span class="chain-card-kind">HOODIE / CONCEPT</span></span>
+          </button>
+          </div>
+        </div>
+      </div>
+      <div id="chain-picked" class="merch-chain-picked" data-brand="invizible">
+        <span class="merch-chain-light" aria-hidden="true"></span>
+        <div class="merch-chain-picked-copy" aria-live="polite" aria-atomic="true">
+          <span class="merch-chain-picked-kicker" id="chain-picked-kind">INVIZIBLE / T-SHIRT</span>
+          <h3 id="chain-picked-name">Invizible Tee</h3>
+          <p id="chain-picked-description">A stripped-back Invizible wordmark on a dark everyday tee.</p>
+          <span class="merch-chain-preview-label">VISUAL PROTOTYPE · NOT FOR SALE</span>
+        </div>
+        <a class="merch-chain-classic-link" href="#merch" id="chain-original-rack">See the original merch rack <span aria-hidden="true">↘</span></a>
+      </div>
+      <p class="merch-chain-bottom-note">Concept-only animation. No checkout or sizing changes.</p>
+    </section>
+  </div>
   <script type="module" src="./assets/js/script.js"></script>
   <script type="module" src="./assets/js/merch-showroom.js"></script>
+  <script type="module" src="./assets/js/merch-chain-experiment.js"></script>
 </body>
 </html>
