@@ -172,6 +172,7 @@
 /* One continuous chassis: side walls and fascia share the outer deck edges.
    Keep the face below the vinyl and tuck the foot rail behind its lower bevel. */
 .deck {
+  --cheek-width: clamp(12px, 2.8%, 20px);
   --chassis-edge: #424d52;
   --chassis-highlight: #758185;
   --face-top: #323b40;
@@ -234,7 +235,7 @@
   z-index: 7;
   top: 0;
   bottom: -12px;
-  width: clamp(12px, 2.8%, 20px);
+  width: var(--cheek-width);
   border: 0;
   pointer-events: none;
 }
@@ -255,24 +256,45 @@
   box-shadow: inset 0 1px 1px #ffffff14, inset 0 -8px 8px #0007;
 }
 
-/* A gently rolled front edge bridges the tabletop and fascia. It terminates
-   beneath the side cheeks, keeping the corners joined at every screen width. */
+/* The rolled edge curves down into the side cheeks. Shared width keeps the
+   small corner returns aligned on desktop and mobile. */
 .deck-front-lip {
   position: absolute;
-  z-index: 6;
-  left: 0;
-  right: 0;
+  z-index: 8;
+  left: calc(var(--cheek-width) + 6px);
+  right: calc(var(--cheek-width) + 6px);
   top: calc(78% - 2px);
   bottom: auto;
   height: 7px;
   border: 0;
-  border-radius: 3px;
+  border-radius: 0;
   background: linear-gradient(180deg,
     var(--side-mid), var(--chassis-highlight) 24%,
     var(--face-top) 52%, var(--face-bottom));
   box-shadow: 0 2px 3px #0004;
   pointer-events: none;
 }
+
+/* Quarter-round returns use the same seven-pixel bevel profile as the lip.
+   The reflection and contact shadow fade together as they turn down the rail. */
+.deck-front-lip::before,
+.deck-front-lip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 14px;
+  background: radial-gradient(circle at 100% 12px,
+    transparent 4.5px, var(--face-bottom) 5px,
+    var(--face-top) 8.36px, var(--chassis-highlight) 10.32px,
+    var(--side-mid) 12px, transparent 12.5px);
+  filter: drop-shadow(0 2px 1px #0004);
+  -webkit-mask-image: linear-gradient(180deg, #000 25%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 25%, transparent 100%);
+  pointer-events: none;
+}
+.deck-front-lip::before { left: -12px; }
+.deck-front-lip::after { right: -12px; transform: scaleX(-1); }
 
 /* The fascia supplies the single lower silhouette; no stacked rail below it. */
 .stage-platform { display: none; }
