@@ -261,8 +261,8 @@
 .deck-front-lip {
   position: absolute;
   z-index: 8;
-  left: calc(var(--cheek-width) + 6px);
-  right: calc(var(--cheek-width) + 6px);
+  left: var(--cheek-width);
+  right: var(--cheek-width);
   top: calc(78% - 2px);
   bottom: auto;
   height: 7px;
