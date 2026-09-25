@@ -47,6 +47,7 @@ let entranceTimer;
 const personaUI = {
   invizible: {
     name: 'DJ INVIZIBLE',
+    headerName: 'DJ DOOM',
     avatar: 'assets/img/invizible.png',
     placeholder: 'Say something to Invizible...',
     greeting: 'Hey, welcome to the booth! I’m DJ Doom, DJ Invizible’s virtual AI assistant. I can answer questions about his music and shows, check availability, and help send booking requests for his review. For country events, tap the Midnite Maverick icon in the top-right. What can I help you with?',
@@ -290,7 +291,7 @@ function applyPersona(persona) {
 
   document.body.classList.toggle('theme-maverick', persona === 'maverick');
   document.body.classList.toggle('theme-invizible', persona === 'invizible');
-  if (venueNowDeck) venueNowDeck.textContent = personaUI[persona].name;
+  if (venueNowDeck) venueNowDeck.textContent = personaUI[persona].headerName || personaUI[persona].name;
 
   const incoming = personaThreads[persona];
   chatHistory = incoming.history;
@@ -298,7 +299,7 @@ function applyPersona(persona) {
   messages.scrollTop = messages.scrollHeight;
   if (input) input.value = incoming.draft;
   if (bookingPersona) bookingPersona.value = persona;
-  panelTitle.textContent = personaUI[persona].name;
+  panelTitle.textContent = personaUI[persona].headerName || personaUI[persona].name;
   if (chatFootnote) chatFootnote.textContent = 'DJ Doom • virtual AI assistant for ' + (persona === 'maverick' ? 'Midnite Maverick' : 'DJ Invizible') + '. Booking requests are reviewed by the DJ.';
   if (chatAvatar) chatAvatar.src = personaUI[persona].avatar;
   setBoothStatus('AT THE TURNTABLES');
