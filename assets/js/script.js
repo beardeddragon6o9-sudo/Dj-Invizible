@@ -7,6 +7,7 @@ const input = document.getElementById('input');
 const panelTitle = document.getElementById('panel-title');
 const panelSubtitle = document.getElementById('panel-subtitle');
 const chatAvatar = document.getElementById('chat-avatar');
+const chatFootnote = document.getElementById('chat-footnote');
 const quickPrompts = document.getElementById('quick-prompts');
 const bookingPersona = document.getElementById('booking-persona');
 const mascotCue = document.getElementById('mascot-cue');
@@ -48,16 +49,16 @@ const personaUI = {
     name: 'DJ INVIZIBLE',
     avatar: 'assets/img/invizible.png',
     placeholder: 'Say something to Invizible...',
-    greeting: 'Welcome to Invizible’s booth. Ask me about tracks, sets, or booking a date.',
-    comeback: 'Invizible back on deck. What can I cue up?',
+    greeting: 'Hey, welcome to the booth! I’m DJ Doom, DJ Invizible’s virtual AI assistant. I can answer questions about his music and shows, check availability, and help send booking requests for his review. For country events, tap the Midnite Maverick icon in the top-right. What can I help you with?',
+    comeback: 'Welcome back to the booth! DJ Doom here, your virtual AI assistant. Need help checking availability, booking a show, or finding out anything about DJ Invizible? Ask away. Country plans? Maverick’s icon is up top-right.',
     cue: 'Invizible is on deck. 🎧'
   },
   maverick: {
     name: 'MIDNITE MAVERICK',
     avatar: 'assets/img/maverick.png',
     placeholder: 'Say something to Maverick...',
-    greeting: 'Maverick’s on deck. Ask me about the country set or getting a date booked.',
-    comeback: 'Maverick here. What can I play for you?',
+    greeting: 'Welcome to Maverick’s side of the booth! I’m DJ Doom, the virtual AI assistant for Midnite Maverick, DJ Invizible’s country-focused alias. I can answer questions about country shows, check dates, and help send booking requests for review. What are you planning?',
+    comeback: 'Welcome back to Maverick’s side of the booth! DJ Doom here. Got a question about the country set, want to check availability, or need a hand with a booking request? I’m all ears.',
     cue: 'Maverick is on deck. 🤠'
   }
 };
@@ -237,14 +238,23 @@ async function askAI(userText) {
   }
 }
 
-function greetFirstTime() {
-  let returning = false;
+// A visit marker selects the greeting, not the conversation history. Never put
+// visitors' contact or booking details into persistent browser storage here.
+function seenPersonaBefore(persona) {
+  const key = persona === 'maverick' ? 'dj_maverick_seen' : 'dj_invizible_seen';
   try {
-    returning = localStorage.getItem('dj_invizible_seen') === '1';
-    localStorage.setItem('dj_invizible_seen', '1');
+    const returning = localStorage.getItem(key) === '1';
+    localStorage.setItem(key, '1');
+    return returning;
   } catch (e) {
-    // Private storage settings should never prevent someone chatting.
+    // Private browsing or disabled storage must still get a full introduction.
+    return false;
   }
+}
+
+function greetOnArrival() {
+  if (personaThreads.invizible.visited) return;
+  const returning = seenPersonaBefore('invizible');
   personaThreads.invizible.visited = true;
   speak(returning ? personaUI.invizible.comeback : personaUI.invizible.greeting);
   enterBooth();
@@ -289,6 +299,7 @@ function applyPersona(persona) {
   if (input) input.value = incoming.draft;
   if (bookingPersona) bookingPersona.value = persona;
   panelTitle.textContent = personaUI[persona].name;
+  if (chatFootnote) chatFootnote.textContent = 'DJ Doom • virtual AI assistant for ' + (persona === 'maverick' ? 'Midnite Maverick' : 'DJ Invizible') + '. Booking requests are reviewed by the DJ.';
   if (chatAvatar) chatAvatar.src = personaUI[persona].avatar;
   setBoothStatus('AT THE TURNTABLES');
   panel.setAttribute('aria-label', `Chat with ${personaUI[persona].name} mascot`);
@@ -298,7 +309,8 @@ function applyPersona(persona) {
   }
   showPanel();
   if (!incoming.visited) {
-    speak(personaUI[persona].greeting);
+    const returning = seenPersonaBefore(persona);
+    speak(returning ? personaUI[persona].comeback : personaUI[persona].greeting);
     incoming.visited = true;
   }
   updateQuickPrompts();
@@ -329,11 +341,21 @@ input?.addEventListener('blur', () => {
 });
 input?.addEventListener('input', updateQuickPrompts);
 
-window.addEventListener('load', () => {
+// The module may finish after the page load event (for example on a very fast
+// private-window navigation). Initialize from DOM readiness, exactly once.
+let boothInitialized = false;
+function initializeBooth() {
+  if (boothInitialized) return;
+  boothInitialized = true;
   showPanel(false);
-  greetFirstTime();
+  greetOnArrival();
   updateQuickPrompts();
-});
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeBooth, { once: true });
+} else {
+  initializeBooth();
+}
 
 form?.addEventListener('submit', async event => {
   event.preventDefault();
