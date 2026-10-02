@@ -53,6 +53,7 @@ function setOpen(open) {
   merchSection.inert = !open;
   merchSection.setAttribute('aria-hidden', String(!open));
   toggle.setAttribute('aria-expanded', String(open));
+  window.dispatchEvent(new CustomEvent('booth-merch', { detail: { open } }));
   if (open) {
     window.dispatchEvent(new CustomEvent('merch-open'));
     cards[0].focus({ preventScroll: true });

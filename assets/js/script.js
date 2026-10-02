@@ -83,6 +83,7 @@ function setBoothStatus(status) {
   if (panelSubtitle?.lastChild) panelSubtitle.lastChild.textContent = ' ' + status;
 }
 function acknowledgeMascot() {
+  window.dispatchEvent(new CustomEvent('booth-interact'));
   const mascot = activeMascot();
   if (!mascot) return;
   window.clearTimeout(acknowledgementTimer);
@@ -284,6 +285,7 @@ function applyPersona(persona) {
   window.clearTimeout(entranceTimer);
   activeMascot()?.classList.remove('is-thinking', 'is-speaking', 'is-listening', 'is-acknowledging', 'is-entering');
   activePersona = persona;
+  window.dispatchEvent(new CustomEvent('booth-persona', { detail: { persona } }));
   btnInviz.classList.toggle('primary', persona === 'invizible');
   btnInviz.classList.toggle('secondary', persona !== 'invizible');
   btnMav.classList.toggle('primary', persona === 'maverick');
