@@ -12,7 +12,8 @@ const merchConcepts = {
     brand: 'invizible', type: 'hoodie',
     name: 'Invizible Hoodie',
     category: 'INVIZIBLE / HOODIE',
-    description: 'The same understated logo on a deeper green, oversized hoodie concept.'
+    description: 'Forest-green hoodie with a silver mask back print, disappearing contours and the signature Invizible logo.',
+    image: 'assets/images/merch/invizible-mask-hoodie.webp'
   },
   'maverick-tee': {
     brand: 'maverick', type: 'tee',
@@ -53,6 +54,7 @@ function setOpen(open) {
   merchSection.inert = !open;
   merchSection.setAttribute('aria-hidden', String(!open));
   toggle.setAttribute('aria-expanded', String(open));
+  window.dispatchEvent(new CustomEvent('booth-merch', { detail: { open } }));
   if (open) {
     window.dispatchEvent(new CustomEvent('merch-open'));
     cards[0].focus({ preventScroll: true });
@@ -78,6 +80,11 @@ cards.forEach(card => card.addEventListener('click', () => {
   document.getElementById('merch-feature-name').textContent = product.name;
   document.getElementById('merch-feature-category').textContent = product.category;
   document.getElementById('merch-feature-description').textContent = product.description;
+  const photo = document.getElementById('merch-feature-photo');
+  photo.hidden = !product.image;
+  if (product.image) photo.src = product.image;
+  else photo.removeAttribute('src');
+  merchFeatured.querySelector('.merch-feature-garment').toggleAttribute('hidden', Boolean(product.image));
   document.getElementById('merch-feature-shape').setAttribute('href', `#merch-${product.type}`);
   document.getElementById('merch-feature-logo').style.display = product.brand === 'invizible' ? '' : 'none';
   document.getElementById('merch-feature-maverick').toggleAttribute('hidden', product.brand === 'invizible');

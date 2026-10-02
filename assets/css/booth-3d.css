@@ -1,0 +1,42 @@
+/* One shared camera keeps each mascot, booth and records aligned. */
+html { overflow-x: clip; }
+.venue { overflow: hidden; }
+.masthead {
+  --model-top: clamp(145px, 17svh, 185px);
+  --model-width: min(calc(var(--booth-width) * 1.10), calc((100svh - 190px) * 1.08));
+}
+#booth-3d {
+  position: absolute;
+  left: var(--stage-x);
+  top: var(--model-top);
+  width: var(--model-width);
+  aspect-ratio: 1.08;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+#booth-3d canvas { display: block; width: 100%; height: 100%; }
+.booth-3d-ready .deck { display: none; }
+body.booth-3d-ready #mascot-invizible.primary,
+body.booth-3d-ready #mascot-maverick.primary {
+  top: var(--model-top);
+  width: var(--model-width);
+  aspect-ratio: 1.08;
+  height: auto;
+  z-index: 4;
+}
+.booth-3d-ready .mascot.primary .mascot-img { visibility: hidden; }
+.booth-3d-ready .mascot.primary { cursor: pointer; }
+body.booth-3d-ready .merch-stage-link {
+  top: calc(var(--model-top) + var(--model-width) / 1.08 - 12px);
+  bottom: auto;
+}
+@media (max-width: 1499px) {
+  body.booth-3d-ready .masthead {
+    min-height: calc(var(--model-top) + var(--model-width) / 1.08 + 60px);
+  }
+}
+@media (max-width: 1050px) {
+  .masthead { --model-top: 150px; --model-width: var(--booth-width); }
+  .mascot.secondary .summon-label { right: 0; left: auto; transform: none; }
+}
