@@ -19,7 +19,7 @@ const axis = new THREE.Vector3(0, 0, 1);
 const rotation = new THREE.Quaternion();
 const scratchQuaternion = new THREE.Quaternion();
 const scene = new THREE.Scene();
-const camera = new THREE.OrthographicCamera(-.567, .567, .525, -.525, .01, 10);
+const camera = new THREE.OrthographicCamera(-.54, .54, .5, -.5, .01, 10);
 camera.position.set(0, .46, 3);
 camera.lookAt(0, .46, 0);
 scene.add(new THREE.HemisphereLight(0xe8f0ff, 0x62594e, 2.2));
@@ -155,8 +155,8 @@ function resize() {
   if (!width || !height || !renderer) return;
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
   renderer.setSize(width, height, false);
-  camera.left = -.525 * width / height;
-  camera.right = .525 * width / height;
+  camera.left = -.5 * width / height;
+  camera.right = .5 * width / height;
   camera.updateProjectionMatrix();
 }
 function frame(now) {
