@@ -110,3 +110,15 @@
 .merch-feature-photo {width:250px;height:250px;max-width:100%;object-fit:contain;border-radius:12px;animation:merchEnlarge .3s ease-out}
 @media (max-width:420px) {.merch-feature-photo {width:220px;height:220px}}
 @media (prefers-reduced-motion:reduce) {.merch-feature-photo {animation:none!important}}
+
+/* Small sign suspended on the merchandise chain. */
+.merch-heading-wrap {flex-direction:column;align-items:stretch;gap:8px}
+.merch-preview-sign {position:relative;text-align:center;padding:10px 8px;background:linear-gradient(145deg,#24312f,#111b1a);border:1px solid #81968a80;border-radius:5px;box-shadow:0 4px 10px #0008,inset 0 1px #ffffff12}
+.merch-preview-sign::before,.merch-preview-sign::after {content:"";position:absolute;top:8px;width:3px;height:3px;border-radius:50%;background:#8c9c94;box-shadow:0 1px 2px #000}
+.merch-preview-sign::before {left:7px}
+.merch-preview-sign::after {right:7px}
+.merch-preview-sign h2 {font-size:15px;line-height:1.25;letter-spacing:.05em;margin:0;font-weight:650}
+.merch-preview-sign p {font-size:10px;line-height:1.4;letter-spacing:.02em;color:var(--muted);margin:4px 0 0}
+#merch-close {align-self:flex-end}
+@media (min-width:1500px) {.merch-showroom {top:100px}}
+@media (max-width:1499px) {.merch-preview-sign {width:220px;max-width:100%;align-self:center}}

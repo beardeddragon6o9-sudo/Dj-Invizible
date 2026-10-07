@@ -13,7 +13,7 @@ const merchConcepts = {
     name: 'Invizible Hoodie',
     category: 'INVIZIBLE / HOODIE',
     description: 'Forest-green hoodie with a silver mask back print, disappearing contours and the signature Invizible logo.',
-    image: 'assets/images/merch/invizible-mask-hoodie.webp'
+    image: 'assets/images/merch/invizible-mask-hoodie-cutout.webp'
   },
   'maverick-tee': {
     brand: 'maverick', type: 'tee',
