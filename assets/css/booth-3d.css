@@ -16,23 +16,23 @@ html { overflow-x: clip; }
   pointer-events: none;
 }
 #booth-3d canvas { display: block; width: 100%; height: 100%; }
-.booth-3d-ready .deck { display: none; }
-body.booth-3d-ready #mascot-invizible.primary,
-body.booth-3d-ready #mascot-maverick.primary {
+:is(.booth-3d-ready, .booth-3d-loading) .deck { display: none; }
+body:is(.booth-3d-ready, .booth-3d-loading) #mascot-invizible.primary,
+body:is(.booth-3d-ready, .booth-3d-loading) #mascot-maverick.primary {
   top: var(--model-top);
   width: var(--model-width);
   aspect-ratio: 1.08;
   height: auto;
   z-index: 4;
 }
-.booth-3d-ready .mascot.primary .mascot-img { visibility: hidden; }
-.booth-3d-ready .mascot.primary { cursor: pointer; }
-body.booth-3d-ready .merch-stage-link {
+:is(.booth-3d-ready, .booth-3d-loading) .mascot.primary .mascot-img { visibility: hidden; }
+:is(.booth-3d-ready, .booth-3d-loading) .mascot.primary { cursor: pointer; }
+body:is(.booth-3d-ready, .booth-3d-loading) .merch-stage-link {
   top: calc(var(--model-top) + var(--model-width) / 1.08 - 12px);
   bottom: auto;
 }
 @media (max-width: 1499px) {
-  body.booth-3d-ready .masthead {
+  body:is(.booth-3d-ready, .booth-3d-loading) .masthead {
     min-height: calc(var(--model-top) + var(--model-width) / 1.08 + 60px);
   }
 }

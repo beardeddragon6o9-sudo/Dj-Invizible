@@ -110,7 +110,8 @@ async function loadModel(id) {
 
 async function selectModel(id) {
   persona = id;
-  // Show the existing image booth until the requested model is ready.
+  // Keep the old image booth hidden while the requested model loads.
+  document.body.classList.add('booth-3d-loading');
   document.body.classList.remove('booth-3d-ready');
   host.style.visibility = 'hidden';
   try {
@@ -120,12 +121,18 @@ async function selectModel(id) {
     active = model;
     play(model, merchOpen ? 'merch' : 'idle');
     host.dataset.persona = id;
+    resize();
+    model.mixer.update(0);
+    renderer.render(scene, camera);
     host.style.visibility = '';
     document.body.classList.add('booth-3d-ready');
+    document.body.classList.remove('booth-3d-loading');
+    clearTimeout(window.boothFallbackTimer);
     nextScratch = elapsed + 12 + Math.random() * 10;
   } catch (error) {
     if (persona !== id) return;
-    document.body.classList.remove('booth-3d-ready');
+    document.body.classList.remove('booth-3d-ready', 'booth-3d-loading');
+    clearTimeout(window.boothFallbackTimer);
     host.style.visibility = 'hidden';
     console.error('[3D booth]', error);
   }
@@ -191,7 +198,8 @@ try {
   host.appendChild(renderer.domElement);
   renderer.domElement.addEventListener('webglcontextlost', event => {
     event.preventDefault(); failed = true;
-    document.body.classList.remove('booth-3d-ready');
+    document.body.classList.remove('booth-3d-ready', 'booth-3d-loading');
+    clearTimeout(window.boothFallbackTimer);
     host.style.visibility = 'hidden';
   });
   renderer.domElement.addEventListener('webglcontextrestored', () => {
@@ -207,6 +215,8 @@ try {
   });
   requestAnimationFrame(frame);
 } catch (error) {
+  document.body.classList.remove('booth-3d-loading');
+  clearTimeout(window.boothFallbackTimer);
   host.style.visibility = 'hidden';
   console.error('[3D booth]', error);
 }

@@ -15,6 +15,13 @@
 
 <!-- Start on Invizible's theme; JS will toggle .theme-maverick when clicked -->
 <body class="ai-only theme-invizible">
+  <script>
+    // Hide the image fallback before first paint; restore it if 3D cannot start.
+    document.body.classList.add('booth-3d-loading');
+    window.boothFallbackTimer = setTimeout(() => {
+      document.body.classList.remove('booth-3d-loading');
+    }, 20000);
+  </script>
   <!-- Venue: stage background, lights, fog, crowd -->
   <div class="venue" aria-hidden="true">
     <div class="venue-halo"></div>
