@@ -30,6 +30,84 @@ const fill = new THREE.DirectionalLight(0xb5d9cf, 1.2);
 fill.position.set(2, 1, 1);
 scene.add(fill);
 
+// Lightweight stage atmosphere shares the booth camera and render loop.
+const stage = new THREE.Group();
+scene.add(stage);
+const stageColor = new THREE.Color();
+function glowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const context = canvas.getContext('2d');
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(.35, 'rgba(255,255,255,.45)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(canvas);
+}
+const glowMap = glowTexture();
+function glow(width, height, x, y, z, color, opacity) {
+  const material = new THREE.MeshBasicMaterial({ map: glowMap, color, transparent: true, opacity, depthWrite: false, toneMapped: false });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+  mesh.position.set(x, y, z);
+  stage.add(mesh);
+  return mesh;
+}
+const floorGlow = glow(1.04, .09, 0, .004, -.21, 0x96cbb0, .32);
+const floorShadow = glow(.79, .042, 0, .004, -.19, 0x000000, .72);
+const beams = [-1, 1].map(side => {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -.018, 0, 0, -.25, -.95, 0, .25, -.95, 0,
+    -.018, 0, 0, .25, -.95, 0, .018, 0, 0
+  ], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0,1,0,0,1,0,0,1,1,0,1,1],2));
+  const material = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { tint: { value: new THREE.Color() }, strength: { value: .085 } },
+    vertexShader: 'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+    fragmentShader: 'varying vec2 vUv; uniform vec3 tint; uniform float strength; void main(){float edge=pow(max(0.0,1.0-abs(vUv.x*2.0-1.0)),1.7);float fade=smoothstep(0.0,.2,vUv.y)*(1.0-.55*vUv.y);gl_FragColor=vec4(tint,strength*edge*fade);}'
+  });
+  const beam = new THREE.Mesh(geometry, material);
+  beam.position.set(side * .34, .98, -.35);
+  stage.add(beam);
+  return beam;
+});
+const leds = [];
+for (let i = 0; i < 13; i++) {
+  const x = -.28 + i * (.56 / 12);
+  const halo = glow(.038, .027, x, .323 - x * .0008, .403, 0xb3dcc4, .25);
+  const bulb = new THREE.Mesh(new THREE.PlaneGeometry(.008, .0035),
+    new THREE.MeshBasicMaterial({ color: 0xb3dcc4, transparent: true, opacity: .7, depthWrite: false, toneMapped: false }));
+  bulb.position.copy(halo.position);
+  bulb.position.z += .001;
+  stage.add(bulb);
+  leds.push({ halo, bulb });
+}
+function updateStage() {
+  const motion = !reduced.matches;
+  const compact = host.clientWidth < 500;
+  const scratch = motion && active?.contact;
+  stageColor.set(persona === 'maverick' ? 0xe8b477 : 0xa1d5bb);
+  floorGlow.material.color.copy(stageColor);
+  floorGlow.material.opacity = (compact ? .22 : .32) + (scratch ? .055 : 0);
+  beams.forEach((beam, i) => {
+    const side = i === 0 ? -1 : 1;
+    beam.rotation.z = side * (.19 + (motion ? Math.sin(elapsed * .22 + i * 1.8) * .14 : 0));
+    beam.material.uniforms.tint.value.copy(stageColor);
+    beam.material.uniforms.strength.value = (compact ? .075 : .14) + (scratch ? .015 : 0);
+  });
+  leds.forEach(({ halo, bulb }, i) => {
+    const breathe = motion ? .5 + .5 * Math.sin(elapsed * 1.05 + i * .24) : .5;
+    halo.material.color.copy(stageColor);
+    bulb.material.color.copy(stageColor);
+    halo.material.opacity = (compact ? .15 : .22) + breathe * .09 + (scratch ? .13 : 0);
+    bulb.material.opacity = .48 + breathe * .18 + (scratch ? .22 : 0);
+  });
+  host.dataset.stageLighting = reduced.matches ? 'still' : scratch ? 'scratch' : 'idle';
+}
+
 function play(model, mode, instant = false) {
   const action = model.actions[mode];
   if (!action) return;
@@ -123,6 +201,7 @@ async function selectModel(id) {
     host.dataset.persona = id;
     resize();
     model.mixer.update(0);
+    updateStage();
     renderer.render(scene, camera);
     host.style.visibility = '';
     document.body.classList.add('booth-3d-ready');
@@ -175,6 +254,7 @@ function frame(now) {
   if (!reduced.matches && !merchOpen && active.mode === 'idle' && elapsed >= nextScratch) play(active, 'scratch');
   active.mixer.update(dt);
   updateRecords(active, dt);
+  updateStage();
   renderer.render(scene, camera);
 }
 
