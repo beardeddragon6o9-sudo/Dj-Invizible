@@ -6,6 +6,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const models = new Map();
 const loading = new Map();
 const paths = { invizible: '/assets/models/doom-booth.glb', maverick: '/assets/models/maverick-booth.glb' };
+let deckHardware;
 let persona = document.body.classList.contains('theme-maverick') ? 'maverick' : 'invizible';
 let merchOpen = document.body.classList.contains('merch-open');
 let active;
@@ -111,11 +112,27 @@ function play(model, mode, instant = false) {
   host.dataset.animation = mode;
 }
 
+function loadDeckHardware() {
+  deckHardware ??= new THREE.TextureLoader().loadAsync('/assets/images/booth-deck-hardware.webp')
+    .then(map => {
+      map.flipY = false;
+      map.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshBasicMaterial({
+        map, transparent: true, depthWrite: false, toneMapped: false,
+        polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
+      });
+    })
+    .catch(() => null); // Keep the deck built into the model if the detail layer fails to load.
+  return deckHardware;
+}
+
 async function loadModel(id) {
   if (models.has(id)) return models.get(id);
   if (loading.has(id)) return loading.get(id);
   const promise = (async () => {
-    const gltf = await new GLTFLoader().loadAsync(paths[id]);
+    const [gltf, hardware] = await Promise.all([
+      new GLTFLoader().loadAsync(paths[id]), loadDeckHardware()
+    ]);
     const mixer = new THREE.AnimationMixer(gltf.scene);
     const right = gltf.scene.getObjectByName('Vinyl_Right');
     const left = gltf.scene.getObjectByName('Vinyl_Left');
@@ -158,6 +175,14 @@ async function loadModel(id) {
       }
       if (object.name.startsWith('Vinyl_')) object.renderOrder = 1;
     });
+    const deck = gltf.scene.getObjectByName('Deck_reference_plane');
+    if (deck?.isMesh && hardware) {
+      // Reuse the deck UVs. The vinyl keeps its own texture, transforms and render order.
+      const details = new THREE.Mesh(deck.geometry, hardware);
+      details.name = 'Deck_Hardware_Details';
+      details.renderOrder = .5;
+      deck.add(details);
+    }
     mixer.addEventListener('finished', event => {
       if (event.action !== model.action) return;
       if (model.mode === 'scratch' || model.mode === 'close') {
