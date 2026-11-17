@@ -33,7 +33,7 @@ const rim = new THREE.DirectionalLight(0xa1d5bb, 2.2);
 rim.position.set(2, 1.2, -1.6);
 scene.add(rim);
 
-// Lightweight stage atmosphere shares the booth camera and render loop.
+// The page supplies the backdrop wash. Keep contact glow and deck LEDs with the 3D booth.
 const stage = new THREE.Group();
 scene.add(stage);
 const stageColor = new THREE.Color();
@@ -59,32 +59,6 @@ function glow(width, height, x, y, z, color, opacity) {
 }
 const floorGlow = glow(1.04, .09, 0, .004, -.21, 0x96cbb0, .32);
 const floorShadow = glow(.79, .042, 0, .004, -.19, 0x000000, .72);
-const beams = [-1, 1].map(side => {
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
-    -.018, 0, 0, -.21, -.95, 0, .21, -.95, 0,
-    -.018, 0, 0, .21, -.95, 0, .018, 0, 0
-  ], 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0,1,0,0,1,0,0,1,1,0,1,1],2));
-  const material = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    uniforms: { tint: { value: new THREE.Color() }, strength: { value: .085 } },
-    vertexShader: 'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-    fragmentShader: `
-      varying vec2 vUv;
-      uniform vec3 tint;
-      uniform float strength;
-      void main() {
-        float edge = smoothstep(0.0, 0.85, 1.0 - abs(vUv.x * 2.0 - 1.0));
-        float fade = smoothstep(0.0, 0.24, vUv.y) * (1.0 - smoothstep(0.65, 1.0, vUv.y));
-        gl_FragColor = vec4(tint, strength * edge * fade);
-      }`
-  });
-  const beam = new THREE.Mesh(geometry, material);
-  beam.position.set(side * .34, .98, -.35);
-  stage.add(beam);
-  return beam;
-});
 const leds = [];
 for (let i = 0; i < 13; i++) {
   const x = -.28 + i * (.56 / 12);
@@ -104,12 +78,6 @@ function updateStage() {
   rim.color.copy(stageColor);
   floorGlow.material.color.copy(stageColor);
   floorGlow.material.opacity = (compact ? .22 : .32) + (scratch ? .055 : 0);
-  beams.forEach((beam, i) => {
-    const side = i === 0 ? -1 : 1;
-    beam.rotation.z = -side * (.19 + (motion ? Math.sin(elapsed * .22 + i * 1.8) * .08 : 0));
-    beam.material.uniforms.tint.value.copy(stageColor);
-    beam.material.uniforms.strength.value = (compact ? .075 : .14) + (scratch ? .015 : 0);
-  });
   leds.forEach(({ halo, bulb }, i) => {
     const breathe = motion ? .5 + .5 * Math.sin(elapsed * 1.05 + i * .24) : .5;
     halo.material.color.copy(stageColor);
