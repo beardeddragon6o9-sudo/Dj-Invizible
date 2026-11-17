@@ -154,6 +154,15 @@ async function loadModel(id) {
     if (['idle','scratch','merch','close'].some(mode => !clips[mode]) || !scratchTrack) {
       throw new Error('A required booth animation is missing.');
     }
+    if (id === 'invizible') {
+      // Hold the right arm above the deck while the merch rack moves.
+      const rightArmPose = new Map(clips.idle.tracks
+        .filter(track => /^mixamorigRight(?:Shoulder|Arm|ForeArm|Hand)/.test(track.name))
+        .map(track => [track.name, track.clone().trim(0, 0)]));
+      for (const mode of ['merch', 'close']) {
+        clips[mode].tracks = clips[mode].tracks.map(track => rightArmPose.get(track.name) ?? track);
+      }
+    }
     const model = {
       root: gltf.scene, mixer, actions: Object.fromEntries(Object.entries(clips).map(([mode, clip]) => [mode, mixer.clipAction(clip)])),
       right, left, baseRight: right.quaternion.clone(), baseLeft: left.quaternion.clone(),
