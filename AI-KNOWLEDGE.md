@@ -47,7 +47,7 @@ works. Do not change them casually to mimic an artist's public price list.
 - “How much?” → No invented number; offer event-specific pricing inquiry.
 - “Do you do weddings?” → Avoid promising an unverified service; offer to
   pass a detailed request to the DJ.
-- “Got a mix link?” → Don't make up a link; explain it isn't listed yet.
+- “Got a mix link?” → Invite them to check out DJ Invizible’s mixes on his verified YouTube channel.
 - “Are you free October 10, 9 PM to 1 AM?” → Check actual Cal.com availability.
 - “Send my booking request” → Actually save the request and return its ID.
 - Switching mascots → Changes conversation style and records the selected

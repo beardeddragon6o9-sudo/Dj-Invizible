@@ -1,7 +1,7 @@
 import { BOOKING_ZONE, localDate, blockWindow, hasBlockSlot, eventNameFor } from "../_lib/bookingBlocks.js";
 import { calCheckAvailability } from "../_lib/cal.js";
 import { createBookingRequest } from "../_lib/requestsStore.js";
-import { buildArtistPrompt, artistNameFor, normalizePersona } from "../_lib/artistInfo.js";
+import { ARTIST_INFO, buildArtistPrompt, artistNameFor, normalizePersona } from "../_lib/artistInfo.js";
 
 export const config = { runtime: "nodejs" };
 
@@ -421,7 +421,10 @@ export default async function handler(req, res){
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ ok:false, error:"Missing 'messages' array or a prompt." });
     }
-    const out = await runChat(messages, body?.persona);
+    const mixesUrl = ARTIST_INFO[normalizePersona(body?.persona)].mixesUrl;
+    const out = body?.topic === 'mixes' && mixesUrl
+      ? { content: `Check out DJ Invizible’s mixes on YouTube.\n${mixesUrl}` }
+      : await runChat(messages, body?.persona);
     return res.status(200).json({ ok:true, model: DEFAULT_MODEL, ...(out.handoffPersona ? { handoffPersona: out.handoffPersona } : {}), text: out.content, content: out.content, reply:{role:"assistant",content:out.content} });
   } catch (err) {
     return res.status(500).json({ ok:false, error: err?.message || "server_error" });

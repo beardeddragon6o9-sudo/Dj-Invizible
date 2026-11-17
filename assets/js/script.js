@@ -18,6 +18,11 @@ const btnMav = document.getElementById('mascot-maverick');
 // Use this deployment's own backend: preview talks to preview, production to production.
 // This preserves the same /api/chat request body and session handling.
 const AI_ENDPOINT = '/api/chat';
+const MIXES_URL = 'https://www.youtube.com/@DJ.INVIZIBLE';
+const mixesUrlPattern = MIXES_URL.replaceAll('.', '\\.');
+const mixesLinkPattern = new RegExp(
+  String.raw`(\[[^\]\n]+\]\(${mixesUrlPattern}\)|${mixesUrlPattern}(?=$|[\s),!?;:]|\.(?=\s|$)))`, 'gi'
+);
 let chatHistory = [];
 // Keep each DJ's booking context, transcript and unfinished input independent.
 const personaThreads = {
@@ -134,12 +139,27 @@ function updateQuickPrompts() {
   });
 }
 
-// Always use textContent for model and user text, never HTML.
+// Render conversation text literally, with a link for the verified channel in replies.
 function addMsg(text, role = 'bot') {
   const el = document.createElement('div');
   el.className = `msg ${role}`;
-  if (role === 'bot') el.dataset.speaker = personaUI[activePersona].name;
-  el.textContent = String(text);
+  if (role === 'bot') {
+    el.dataset.speaker = personaUI[activePersona].name;
+    for (const [index, part] of String(text).split(mixesLinkPattern).entries()) {
+      if (index % 2 === 0) {
+        el.append(part);
+        continue;
+      }
+      const link = document.createElement('a');
+      link.href = MIXES_URL;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'DJ Invizible on YouTube';
+      el.append(link);
+    }
+  } else {
+    el.textContent = String(text);
+  }
   messages.appendChild(el);
   messages.scrollTop = messages.scrollHeight;
   return el;
@@ -189,7 +209,7 @@ function reactToReply() {
   flashCue('Back to you! ↗', 3600);
 }
 
-async function askAI(userText) {
+async function askAI(userText, topic) {
   if (chatBusy || !userText.trim()) return;
   chatBusy = true;
   addMsg(userText, 'user');
@@ -209,7 +229,7 @@ async function askAI(userText) {
       body: JSON.stringify({ messages: selectedMerch ? chatHistory.map((message, index) =>
         index === chatHistory.length - 1 && message.role === 'user'
           ? { ...message, content: `[Merch viewing context: ${selectedMerch.name}. ${selectedMerch.description} This is a visual concept only; sizes, prices, stock and ordering are not available. Do not invent those details or claim an order can be placed.]\n\n${message.content}` }
-          : message) : chatHistory, persona: activePersona })
+          : message) : chatHistory, persona: activePersona, topic })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.ok === false) {
@@ -329,7 +349,7 @@ quickPrompts?.addEventListener('click', event => {
   const button = event.target.closest('button[data-topic]');
   if (!button || chatBusy) return;
   const prompt = promptText[activePersona][button.dataset.topic];
-  if (prompt) askAI(prompt);
+  if (prompt) askAI(prompt, button.dataset.topic);
 });
 
 input?.addEventListener('focus', () => {

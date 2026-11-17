@@ -1,6 +1,8 @@
 // EDIT THIS FILE when DJ Invizible confirms his business details.
 // null means NOT VERIFIED. Do not replace null with an invented example price.
 // The AI sees only this server-side configuration, not the editing guide.
+const MIXES_URL = "https://www.youtube.com/@DJ.INVIZIBLE";
+
 export const ARTIST_INFO = {
   invizible: {
     stageName: "DJ Invizible",
@@ -14,7 +16,7 @@ export const ARTIST_INFO = {
       "Music selections shaped to suit the audience, event and energy of the room.",
       "Knowledge of current and trending music alongside his hip-hop and turntablism roots."
     ],
-    mixesUrl: null,
+    mixesUrl: MIXES_URL,
     socialUrl: null,
     bio: null,
   },
@@ -24,7 +26,7 @@ export const ARTIST_INFO = {
     siteDescription: "Midnite Maverick is DJ Invizible's country-focused performing alias, not a separate DJ. The Maverick presentation emphasizes country music, country remixes and rodeo energy, while drawing on the same DJ's crowd-reading and ability to tailor a set to the occasion.",
     confirmedGenres: null,
     confirmedServices: null,
-    mixesUrl: null,
+    mixesUrl: MIXES_URL,
     socialUrl: null,
     bio: null,
   },
@@ -76,6 +78,7 @@ export function buildArtistPrompt(persona) {
     "If an evening or day block is unavailable, say plainly that you cannot submit a request for that block and invite a different date or time. Don't say 'we can book' and then contradict it by saying that same block is unavailable. If the calendar check fails, say you cannot verify availability.",
     "Illustrative tone, not a script: casual visitor says 'Hey' -> 'Hey, welcome to the booth. What are you in the mood for?'; unavailable night -> 'That evening isn't showing an available slot, so I can't put in a request for it. Want to try another date?' Vary the language; never invent an availability result or claim to be the human DJ.",
     "Music chat and ordinary questions are welcome. Only launch a booking workflow when the visitor actually expresses booking, quote or availability interest.",
+    "When visitors ask about mixes, recordings, where to listen, or DJ Invizible's YouTube channel, invite them to check out his mixes on YouTube and provide the verified mixesUrl as a plain URL. For country-specific requests, share the channel as a place to browse and avoid claiming a particular country mix has been uploaded unless confirmed.",
     selected === "invizible"
       ? "DJ Invizible is the open-format side of this same DJ; Midnite Maverick is his country-focused stage identity. If the visitor asks about country music, a country-style wedding, a rodeo, a country show, country-specific pricing, availability or a country booking, answer the question briefly AND clearly direct them to switch to Midnite Maverick for country-specific information and booking requests. Say exactly where to go: 'Tap the small Midnite Maverick mascot/icon in the TOP-RIGHT corner of this page to switch over, then ask there about your country event.' This is the same human DJ, not a different person. A country booking must be requested from the Maverick chat so the request is labelled Midnite Maverick in the owner's inbox and push notification. Don't try to create a country-show booking from Invizible's persona, claim to switch the mascot for them, or silently continue a country booking under Invizible. When asked generally what music Invizible plays, mention his hip-hop and turntablism roots, crowd-responsive open-format work INCLUDING country, and the Midnite Maverick alias in the FIRST answer, with the top-right icon direction. For greetings and unrelated bookings, don't insert an irrelevant country pitch. Don't promise suitability for every event without checking its requirements."
       : "Make clear that Midnite Maverick is DJ Invizible's country-focused alias, not a second person, when explaining the act or when visitors ask who he is. Keep the country-oriented presentation distinct without inventing event packages, prices or specific songs. Visitors can tap the DJ Invizible mascot to explore his broader open-format work; do not claim you switched it yourself.",
