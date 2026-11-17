@@ -6,7 +6,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const models = new Map();
 const loading = new Map();
 const paths = { invizible: '/assets/models/doom-booth.glb', maverick: '/assets/models/maverick-booth.glb' };
-let deckHardware;
+let deckTexture;
 let persona = document.body.classList.contains('theme-maverick') ? 'maverick' : 'invizible';
 let merchOpen = document.body.classList.contains('merch-open');
 let active;
@@ -61,10 +61,11 @@ function glow(width, height, x, y, z, color, opacity) {
 const floorGlow = glow(1.04, .09, 0, .004, -.21, 0x96cbb0, .32);
 const floorShadow = glow(.79, .042, 0, .004, -.19, 0x000000, .72);
 const leds = [];
-for (let i = 0; i < 13; i++) {
-  const x = -.28 + i * (.56 / 12);
-  const halo = glow(.038, .027, x, .323 - x * .0008, .403, 0xb3dcc4, .25);
-  const bulb = new THREE.Mesh(new THREE.PlaneGeometry(.008, .0035),
+// Match the sockets in the 1920-pixel-wide chassis texture.
+for (const column of [372, 425, 478, 531, 1389, 1442, 1495, 1548]) {
+  const x = (column / 1920 - .5) * .8577 - .0063;
+  const halo = glow(.022, .016, x, .3364 - x * .00066, .326 - x * .006, 0xb3dcc4, .18);
+  const bulb = new THREE.Mesh(new THREE.PlaneGeometry(.0054, .0022),
     new THREE.MeshBasicMaterial({ color: 0xb3dcc4, transparent: true, opacity: .7, depthWrite: false, toneMapped: false }));
   bulb.position.copy(halo.position);
   bulb.position.z += .001;
@@ -83,8 +84,8 @@ function updateStage() {
     const breathe = motion ? .5 + .5 * Math.sin(elapsed * 1.05 + i * .24) : .5;
     halo.material.color.copy(stageColor);
     bulb.material.color.copy(stageColor);
-    halo.material.opacity = (compact ? .15 : .22) + breathe * .09 + (scratch ? .13 : 0);
-    bulb.material.opacity = .48 + breathe * .18 + (scratch ? .22 : 0);
+    halo.material.opacity = (compact ? .10 : .15) + breathe * .07 + (scratch ? .11 : 0);
+    bulb.material.opacity = .46 + breathe * .18 + (scratch ? .22 : 0);
   });
   host.dataset.stageLighting = reduced.matches ? 'still' : scratch ? 'scratch' : 'idle';
 }
@@ -112,26 +113,23 @@ function play(model, mode, instant = false) {
   host.dataset.animation = mode;
 }
 
-function loadDeckHardware() {
-  deckHardware ??= new THREE.TextureLoader().loadAsync('/assets/images/booth-deck-hardware.webp')
-    .then(map => {
-      map.flipY = false;
-      map.colorSpace = THREE.SRGBColorSpace;
-      return new THREE.MeshBasicMaterial({
-        map, transparent: true, depthWrite: false, toneMapped: false,
-        polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
-      });
+function loadDeckTexture() {
+  deckTexture ??= new THREE.TextureLoader().loadAsync('/assets/images/booth-deck-hardware.webp')
+    .then(texture => {
+      texture.flipY = false;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
     })
-    .catch(() => null); // Keep the deck built into the model if the detail layer fails to load.
-  return deckHardware;
+    .catch(() => null); // Fall back to the texture embedded in the model.
+  return deckTexture;
 }
 
 async function loadModel(id) {
   if (models.has(id)) return models.get(id);
   if (loading.has(id)) return loading.get(id);
   const promise = (async () => {
-    const [gltf, hardware] = await Promise.all([
-      new GLTFLoader().loadAsync(paths[id]), loadDeckHardware()
+    const [gltf, texture] = await Promise.all([
+      new GLTFLoader().loadAsync(paths[id]), loadDeckTexture()
     ]);
     const mixer = new THREE.AnimationMixer(gltf.scene);
     const right = gltf.scene.getObjectByName('Vinyl_Right');
@@ -176,13 +174,14 @@ async function loadModel(id) {
       if (object.name.startsWith('Vinyl_')) object.renderOrder = 1;
     });
     const deck = gltf.scene.getObjectByName('Deck_reference_plane');
-    if (deck?.isMesh && hardware) {
-      // Reuse the deck UVs. The vinyl keeps its own texture, transforms and render order.
-      const details = new THREE.Mesh(deck.geometry, hardware);
-      details.name = 'Deck_Hardware_Details';
-      details.renderOrder = .5;
-      deck.add(details);
+    if (deck?.isMesh && texture) {
+      // The model shares the original material with the rotating records.
+      deck.material = deck.material.clone();
+      deck.material.map = texture;
+      deck.material.toneMapped = false;
     }
+    const support = gltf.scene.getObjectByName('Stand_Top_Support');
+    if (support) support.position.z -= .016; // Seat the rail behind the sloped front face.
     mixer.addEventListener('finished', event => {
       if (event.action !== model.action) return;
       if (model.mode === 'scratch' || model.mode === 'close') {
