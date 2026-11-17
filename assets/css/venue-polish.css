@@ -67,46 +67,43 @@
   box-shadow: 0 0 9px rgba(231, 181, 110, .6);
 }
 
-/* The light sits behind the performer and changes tint with the theme. */
+/* Light on the back wall stays behind the performer and fades into the room. */
 .venue-halo {
   position: absolute;
-  top: 12svh;
+  top: 7svh;
   left: 50%;
-  width: min(1040px, 80vw);
-  height: min(70svh, 660px);
+  width: min(940px, 82vw);
+  height: min(75svh, 720px);
   transform: translateX(-50%);
-  border-radius: 50%;
   background: radial-gradient(ellipse at center,
-    rgba(var(--beam-color), .075) 0%,
-    rgba(var(--beam-color), .033) 38%,
-    transparent 72%);
-  filter: blur(28px);
-  opacity: .8;
+    rgba(var(--venue-light), .21), rgba(var(--venue-light), .075) 38%, transparent 72%);
   animation: venueHalo 15s ease-in-out infinite;
 }
 
-/* A hint of reflected light under the deck anchors it in the virtual room. */
+/* The floor follows the fallback deck or the 3D model's foot line. */
+.masthead {
+  --floor-y: calc(var(--deck-y) + var(--booth-width) * .32);
+  --floor-width: var(--booth-width);
+}
+:is(.booth-3d-loading, .booth-3d-ready) .masthead {
+  --floor-y: calc(var(--model-top) + var(--model-width) / 1.08 * .95);
+  --floor-width: var(--model-width);
+}
 .masthead::before {
   content: "";
   position: absolute;
   z-index: 0;
   pointer-events: none;
   left: var(--stage-x);
-  top: calc(var(--deck-y) + var(--booth-width) * .23);
-  width: calc(var(--booth-width) * 1.4);
-  height: clamp(110px, 14svh, 185px);
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at center,
-    rgba(var(--beam-color), .075) 0%,
-    rgba(var(--beam-color), .028) 38%,
-    transparent 74%);
-  filter: blur(26px);
-}
-.theme-maverick .masthead::before {
-  background: radial-gradient(ellipse at center,
-    rgba(202, 147, 87, .115) 0%,
-    rgba(202, 147, 87, .035) 40%,
-    transparent 74%);
+  top: var(--floor-y);
+  width: min(calc(var(--floor-width) * 1.32), 100%);
+  height: clamp(84px, 15svh, 155px);
+  transform: translate(-50%, -48%);
+  background:
+    radial-gradient(ellipse 34% 23% at 50% 50%, #030607ef, transparent),
+    radial-gradient(ellipse at center, rgba(var(--venue-light), .22), rgba(var(--venue-light), .065) 47%, transparent 74%),
+    repeating-linear-gradient(0deg, transparent 0 10px, rgba(var(--venue-light), .12) 11px 12px);
+  mask-image: radial-gradient(ellipse at center, #000 11%, #0008 48%, transparent 72%);
 }
 
 /* Thin reflections read as powered hardware without taking attention from the vinyl. */
@@ -118,8 +115,8 @@
   border-radius: inherit;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 24% 16%, rgba(var(--beam-color), .065), transparent 32%),
-    radial-gradient(ellipse at 77% 16%, rgba(var(--beam-color), .065), transparent 32%);
+    radial-gradient(ellipse at 24% 16%, rgba(var(--venue-light), .12), transparent 32%),
+    radial-gradient(ellipse at 77% 16%, rgba(var(--venue-light), .12), transparent 32%);
 }
 .mixer::before {
   content: "";

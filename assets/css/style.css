@@ -16,9 +16,8 @@
   --accent-2:#8c8c8c;
 
   /* Stage tuning */
-  --beam-color: 255,255,255;   /* RGB for spotlight */
-  --beam-opacity: .22;
-  --fog-opacity: .14;
+  --beam-color: 255,255,255;
+  --venue-light: 146,196,171;
   --crowd-height: 120px;
 
   /* Deck look */
@@ -41,9 +40,8 @@
   --accent:#ffe3b0;      /* warm sand */
   --accent-2:#b5835a;    /* leather tan */
 
-  --beam-color: 255,205,120; /* amber */
-  --beam-opacity:.25;
-  --fog-opacity:.18;
+  --beam-color: 255,205,120;
+  --venue-light: 220,156,96;
 
   /* wood/amber deck */
   --deck-bg1: rgba(120,70,30,0.25);
@@ -72,33 +70,36 @@ button,input,textarea{font:inherit}
 
 /* 3) VENUE: lights, fog, crowd */
 .venue{ position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background: radial-gradient(1200px 700px at 50% -200px, rgba(255,255,255,0.06), transparent 70%);
+  background:
+    radial-gradient(ellipse at 50% 24%, rgba(var(--venue-light), .075), transparent 60%),
+    linear-gradient(180deg, #06090b30, #050708b0);
 }
 .lights,.fog,.crowd{ position:absolute; inset:0 }
 .beam{
-  position:absolute; top:-4vh; width:40vw; height:80vh; transform-origin: top center;
-  filter: blur(1px); mix-blend-mode: screen; opacity: var(--beam-opacity);
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(var(--beam-color),.75), rgba(var(--beam-color),0) 65%),
-    linear-gradient(to bottom, rgba(var(--beam-color),.5), rgba(var(--beam-color),0) 70%);
-  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-  animation: sweep 9s ease-in-out infinite;
+  position:absolute; top:-10svh; width:clamp(180px, 32vw, 480px); height:88svh;
+  transform-origin:50% 5%; transform:rotate(var(--light-angle));
+  background: radial-gradient(ellipse at 50% 34%,
+    rgba(var(--venue-light), .19), rgba(var(--venue-light), .075) 32%, transparent 69%);
+  animation: sweep 18s ease-in-out infinite;
 }
-.beam.left{ left:10vw;  transform: rotate(-16deg) }
-.beam.right{ right:10vw; transform: rotate(16deg); animation-delay: -3s }
-.beam.center{ left:30vw; transform: rotate(0deg);  animation-delay: -6s }
-@keyframes sweep{ 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} }
+.beam.left{ right:calc(50% - 5vw); --light-angle:-13deg }
+.beam.right{ left:calc(50% - 5vw); --light-angle:13deg; animation-delay:-9s }
+.beam.center{ inset-inline:0; margin-inline:auto; height:45svh; transform:none; opacity:.48; animation:none }
+@keyframes sweep{
+  0%,100%{ transform:rotate(calc(var(--light-angle) - 3deg)); }
+  50%{ transform:rotate(calc(var(--light-angle) + 3deg)); }
+}
 
 .fog::before,.fog::after{
-  content:""; position:absolute; left:-20vw; right:-20vw; top:20vh; height:40vh;
+  content:""; position:absolute; left:4vw; right:4vw; top:38svh; height:40svh;
   background:
-    radial-gradient(300px 120px at 20% 50%, rgba(255,255,255,.6), transparent 60%),
-    radial-gradient(260px 100px at 60% 50%, rgba(255,255,255,.5), transparent 60%),
-    radial-gradient(220px 90px  at 85% 60%, rgba(255,255,255,.4), transparent 60%);
-  opacity: var(--fog-opacity); filter: blur(20px); animation: drift 30s linear infinite;
+    radial-gradient(ellipse at 26% 59%, rgba(var(--venue-light), .135), transparent 44%),
+    radial-gradient(ellipse at 67% 69%, rgba(var(--venue-light), .10), transparent 45%);
+  mask-image:radial-gradient(ellipse closest-side, #000 32%, transparent 100%);
+  opacity:.6; animation:drift 24s ease-in-out infinite alternate;
 }
-.fog::after{ top:34vh; animation-duration: 38s; animation-direction: reverse; opacity: calc(var(--fog-opacity) * 0.9) }
-@keyframes drift{ 0%{transform:translateX(0)} 100%{transform:translateX(40vw)} }
+.fog::after{ top:50svh; opacity:.36; animation-duration:32s; animation-direction:alternate-reverse }
+@keyframes drift{ from{transform:translateX(-5vw)} to{transform:translateX(5vw)} }
 
 .crowd{
   bottom:0; height: var(--crowd-height);
