@@ -67,9 +67,9 @@ window.addEventListener('merch-selection', event => {
   selectedMerch = event.detail;
   if (selectedMerch && !panel.classList.contains('hidden')) describeMerch();
 });
-window.addEventListener('merch-chat', () => {
+window.addEventListener('merch-chat', event => {
   const wasClosed = panel.classList.contains('hidden');
-  showPanel({ trigger: document.getElementById('merch-chat') });
+  showPanel({ trigger: event.detail?.trigger });
   if (wasClosed && selectedMerch) describeMerch();
   if (compactChat.matches) panel.scrollIntoView({ block: 'nearest' });
 });
@@ -168,7 +168,7 @@ function hidePanel(restoreFocus = false) {
   chatToggle.setAttribute('aria-expanded', 'false');
   activeMascot()?.classList.remove('is-listening');
   setBoothStatus('AT THE TURNTABLES');
-  if (restoreFocus) chatTrigger.focus();
+  if (restoreFocus) (chatTrigger.closest('[inert]') ? chatToggle : chatTrigger).focus();
 }
 
 function updateQuickPrompts() {

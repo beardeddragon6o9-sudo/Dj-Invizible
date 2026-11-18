@@ -6,38 +6,33 @@
 .garment-collar {fill:none;stroke:var(--fabric-shadow,#101b1a);stroke-width:6;stroke-linecap:round}
 .garment-strings {fill:none;stroke:#b2b5a9;stroke-width:2;stroke-linecap:round}
 .garment-pocket {fill:none;stroke:var(--fabric-stroke,#50615a);stroke-width:2;opacity:.85}
-.merch-print-logo {fill:currentColor;color:var(--merch-print,#dfebe2);opacity:.88}
 .merch-print-maverick {fill:var(--merch-print,#dfba86);color:var(--merch-print,#dfba86)}
 .merch-print-maverick text {font-family:system-ui,sans-serif;font-weight:850;letter-spacing:1.2px;font-size:13px}
 .merch-print-maverick text:nth-child(2) {font-size:12px;letter-spacing:.6px}
 .merch-print-maverick[hidden] {display:none}
 
-.merch-item[data-merch-id="invizible-hoodie"] {--fabric:#273d35;--fabric-shadow:#14251f;--fabric-stroke:#536c5b;--merch-print:#e2eadd}
-.merch-item.warm {--fabric:#302822;--fabric-shadow:#1a1410;--fabric-stroke:#6b5749;--merch-print:#dfba86}
-.merch-item[data-merch-id="maverick-hoodie"] {--fabric:#443226;--fabric-shadow:#23170f;--fabric-stroke:#775a43;--merch-print:#f1ca91}
-.merch-featured[data-merch-id="invizible-hoodie"] {--fabric:#273d35;--fabric-shadow:#14251f;--fabric-stroke:#536c5b;--merch-print:#e2eadd}
+.merch-item.warm,
 .merch-featured[data-brand="maverick"] {--fabric:#302822;--fabric-shadow:#1a1410;--fabric-stroke:#6b5749;--merch-print:#dfba86}
+.merch-item[data-merch-id="maverick-hoodie"],
 .merch-featured[data-merch-id="maverick-hoodie"] {--fabric:#443226;--fabric-shadow:#23170f;--fabric-stroke:#775a43;--merch-print:#f1ca91}
 /* Transparent hanging display shares the stage and the existing chat. */
 .merch-symbols {position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
 .merch-showroom {--merch-accent:153,199,168;position:absolute;top:140px;left:calc(23vw - 110px);width:220px;max-width:220px;z-index:8;color:var(--text);visibility:hidden;opacity:0;transform:translateY(-110vh);transition:transform 1.25s cubic-bezier(.55,.05,.8,.45),opacity .9s,visibility 1.25s;pointer-events:none}
 .merch-showroom.is-open {visibility:visible;opacity:1;transform:none;pointer-events:auto;animation:merchReelDown 2.5s both}
 .theme-maverick .merch-showroom {--merch-accent:227,171,113}
-.merch-showroom [hidden] {display:none!important}
 .merch-heading-wrap {display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:2}
 .merch-eyebrow {font-size:9px;letter-spacing:.2em;color:var(--muted)}
 .merch-heading-wrap h2 {font-size:18px;letter-spacing:.12em;margin:6px 0}
 .merch-concept-note {font-size:11px;color:var(--muted);margin:8px 0 16px}
-.merch-showroom button {font:inherit;cursor:pointer;color:inherit}
+.merch-showroom button,.merch-featured button {font:inherit;cursor:pointer;color:inherit}
 #merch-close,#merch-back,#merch-chat {border:1px solid #ffffff30;border-radius:20px;background:#141d1ded;padding:9px 13px;min-height:42px;font-size:12px}
-.merch-showroom button:focus-visible {outline:2px solid var(--accent);outline-offset:4px}
+.merch-showroom button:focus-visible,.merch-featured button:focus-visible {outline:2px solid var(--accent);outline-offset:3px}
 .merch-rack-track {position:relative}
 .merch-rack-items {display:grid;grid-template-columns:minmax(0,1fr);gap:16px;position:relative;padding-top:16px}
 /* Actual repeated link silhouettes rather than a solid clothes rail. */
 .merch-rack-items::before,.merch-rack-items::after {content:"";position:absolute;top:-120vh;bottom:70px;width:10px;z-index:-1;opacity:.85;filter:drop-shadow(1px 2px 1px #000b);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='20'%3E%3Crect x='1.5' y='1' width='5' height='12' rx='2.5' fill='%23232d30' stroke='%23859498'/%3E%3Cpath d='M4 10v10' stroke='%23bac4c4' stroke-width='2'/%3E%3C/svg%3E") center top/10px 20px repeat-y;pointer-events:none}
 .merch-rack-items::before {left:calc(50% - 5px)}
 .merch-rack-items::after {display:none}
-.merch-item,.merch-featured {--fabric:#23302f;--fabric-shadow:#101b1a;--fabric-stroke:#4d5f5b;--merch-print:#dfebe2}
 .merch-item {display:flex;align-items:center;flex-direction:column;background:none;border:0;padding:0;min-width:0;text-align:center}
 .merch-hang {display:flex;flex-direction:column;align-items:center;width:100%;transform-origin:50% 0}
 .is-open .merch-hang {animation:hangingSettle 3.6s 1.8s ease-out both}
@@ -51,14 +46,6 @@
 .merch-item-info {display:flex;flex-direction:column;gap:4px;position:relative;background:#0b1010ba;border-radius:10px;padding:6px}
 .merch-item-name {font-size:12px;font-weight:650}
 .merch-item-kind {font-size:8px;letter-spacing:.1em;color:var(--muted)}
-.merch-featured {position:relative;text-align:center;padding-bottom:18px;background:radial-gradient(ellipse at 50% 40%,#91b49d15,transparent 70%)}
-#merch-back {display:block}
-.merch-feature-visual {position:relative;height:260px;display:grid;place-items:center}
-.merch-feature-garment {width:250px;height:250px;max-width:100%;filter:drop-shadow(0 12px 10px #000a);animation:merchEnlarge .3s ease-out}
-.merch-feature-kicker {font-size:10px;letter-spacing:.1em;color:var(--muted)}
-.merch-feature-copy h3 {font-size:23px;margin:10px 0}
-.merch-feature-copy p {font-size:12px;line-height:1.5;color:var(--muted)}
-.merch-preview-badge {font-size:9px;letter-spacing:.08em}
 /* Reel under tension, overshoot at the stop, then damp the remaining motion. */
 @keyframes merchReelDown {
   0% {transform:translateY(calc(-100% - 160px));opacity:0;animation-timing-function:cubic-bezier(.32,.08,.46,1)}
@@ -95,22 +82,65 @@
   .merch-rack-items {gap:16px 8px}
   .merch-garment {height:132px}
   .merch-item-name {font-size:11px}
-  .merch-feature-visual {height:225px}
-  .merch-feature-garment {height:220px}
 }
 @media (prefers-reduced-motion:reduce) {
   .merch-showroom,.merch-garment {transition:none!important}
-  .merch-showroom,.merch-rack-track,.merch-hang,.merch-feature-garment {animation:none!important}
+  .merch-showroom,.merch-rack-track,.merch-hang,.merch-featured {animation:none!important}
 }
 
-/* Product photos share the hanging and enlarged garment dimensions. */
 .merch-product-photo {object-fit:contain;border-radius:8px;overflow:hidden}
-.merch-feature-photo {width:250px;height:250px;max-width:100%;object-fit:contain;border-radius:12px;animation:merchEnlarge .3s ease-out}
-.merch-views {display:flex;justify-content:center;gap:8px;margin:4px 0 12px}
-.merch-views button {min-height:44px;padding:6px 14px;border:1px solid #ffffff30;border-radius:20px;background:#141d1d;color:var(--text);font-size:12px}
+
+.merch-featured {
+  box-sizing:border-box;
+  width:min(1050px,calc(100% - 24px));
+  max-width:none;
+  max-height:calc(100svh - 24px);
+  margin:auto;
+  padding:0;
+  color:var(--text);
+  background:#151d1b;
+  border:1px solid #b6cbb94a;
+  border-radius:20px;
+  box-shadow:0 24px 80px #000a;
+  overscroll-behavior:contain;
+}
+.merch-featured[open] {animation:merchEnlarge .22s ease-out}
+.merch-featured::backdrop {background:#050908bc;backdrop-filter:blur(5px)}
+.merch-featured [hidden] {display:none}
+.merch-feature-header {
+  position:sticky;
+  top:0;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px clamp(12px,2vw,24px);
+  border-bottom:1px solid #ffffff1c;
+  background:#151d1b;
+}
+.merch-feature-header h2 {margin:0;font-size:clamp(16px,2.2vw,25px);line-height:1.15}
+#merch-back {flex-shrink:0}
+.merch-feature-layout {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,255px)}
+.merch-feature-preview {min-width:0;padding:12px;background:radial-gradient(ellipse at 50% 43%,#40584e,#23332d 55%,#1a2522)}
+.merch-featured[data-brand="maverick"] .merch-feature-preview {background:radial-gradient(ellipse at 50% 43%,#534738,#302923 55%,#241e1a)}
+.merch-feature-visual {display:grid;place-items:center;height:min(68svh,680px)}
+.merch-feature-photo,.merch-feature-garment {display:block;width:100%;height:100%;min-height:0;object-fit:contain;filter:drop-shadow(0 10px 14px #0007)}
+.merch-views {display:flex;justify-content:center;gap:8px;margin:12px 0 0}
+.merch-views button {min-height:44px;min-width:76px;padding:6px 14px;border:1px solid #ffffff38;border-radius:20px;background:#141d1d;font-size:13px}
 .merch-views button[aria-pressed="true"] {border-color:var(--accent);background:var(--accent);color:#111719}
-@media (max-width:420px) {.merch-feature-photo {width:220px;height:220px}}
-@media (prefers-reduced-motion:reduce) {.merch-feature-photo {animation:none!important}}
+.merch-feature-copy {align-self:center;padding:24px;font-size:14px;line-height:1.5}
+.merch-feature-copy p {margin:0 0 12px}
+.merch-preview-badge {font-size:12px;color:var(--muted)}
+html:has(.merch-featured[open]) {overflow:hidden}
+@media (max-width:660px) {
+  .merch-featured {width:calc(100% - 16px);max-height:calc(100svh - 16px);border-radius:14px}
+  .merch-feature-header {padding-block:8px}
+  .merch-feature-layout {grid-template-columns:minmax(0,1fr)}
+  .merch-feature-preview {padding:8px}
+  .merch-feature-visual {height:min(60svh,112vw)}
+  .merch-feature-copy {padding:14px}
+}
 
 /* Small sign suspended on the merchandise chain. */
 .merch-heading-wrap {flex-direction:column;align-items:stretch;gap:8px}

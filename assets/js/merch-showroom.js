@@ -3,17 +3,15 @@ const merchSection = document.getElementById('merch');
 const merchFeatured = document.getElementById('merch-featured');
 const merchConcepts = {
   'invizible-tee': {
-    brand: 'invizible', type: 'tee',
+    brand: 'invizible',
     name: 'Invizible Tee',
-    category: 'INVIZIBLE / T-SHIRT',
     description: 'Washed charcoal with a diagonal Invizible chest wordmark and a mask that breaks into vinyl grooves on the back.',
     photos: 'invizible-vinyl-tee',
     initialView: 'front'
   },
   'invizible-hoodie': {
-    brand: 'invizible', type: 'hoodie',
+    brand: 'invizible',
     name: 'Invizible Hoodie',
-    category: 'INVIZIBLE / HOODIE',
     description: 'Forest-green hoodie with a small chest wordmark and a silver-and-sage mask with angular brows and a halftone fade on the back.',
     photos: 'invizible-silver-mask-hoodie',
     initialView: 'back'
@@ -21,13 +19,11 @@ const merchConcepts = {
   'maverick-tee': {
     brand: 'maverick', type: 'tee',
     name: 'Maverick Tee',
-    category: 'MIDNITE MAVERICK / T-SHIRT',
     description: 'Dark western-inspired colours and a restrained Midnite Maverick chest print.'
   },
   'maverick-hoodie': {
     brand: 'maverick', type: 'hoodie',
     name: 'Maverick Hoodie',
-    category: 'MIDNITE MAVERICK / HOODIE',
     description: 'A warm charcoal-brown hoodie with the Maverick identity front and centre.'
   }
 };
@@ -35,27 +31,23 @@ const merchConcepts = {
 
 const toggle = document.getElementById('merch-toggle');
 const cards = [...merchSection.querySelectorAll('.merch-item')];
-const rack = merchSection.querySelector('.merch-rack-viewport');
 const back = document.getElementById('merch-back');
 const photo = document.getElementById('merch-feature-photo');
-const views = document.getElementById('merch-views');
-const viewButtons = [...views.querySelectorAll('button[data-view]')];
+const garment = merchFeatured.querySelector('.merch-feature-garment');
+const garmentShape = document.getElementById('merch-feature-shape');
+const garmentPrint = document.getElementById('merch-feature-maverick');
+const viewButtons = [...document.querySelectorAll('#merch-views button[data-view]')];
 let selectedCard = null;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stackedMerch = window.matchMedia('(max-width: 1499px)');
 function tellChat(product = null) {
   window.dispatchEvent(new CustomEvent('merch-selection', { detail: product }));
 }
-function overview(focus = true) {
-  merchFeatured.hidden = true;
-  rack.hidden = false;
-  cards.forEach(card => card.setAttribute('aria-pressed', 'false'));
-  if (focus) selectedCard?.focus({ preventScroll: true });
-  selectedCard = null;
-  tellChat();
-}
 function setOpen(open) {
-  if (!open) { toggle.focus({ preventScroll: true }); overview(false); }
+  if (!open) {
+    toggle.focus({ preventScroll: true });
+    tellChat();
+  }
   document.body.classList.toggle('merch-open', open);
   merchSection.classList.toggle('is-open', open);
   merchSection.inert = !open;
@@ -74,44 +66,55 @@ function setOpen(open) {
 }
 toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
 document.getElementById('merch-close').addEventListener('click', () => setOpen(false));
-back.addEventListener('click', () => overview());
-function showPhoto(product, side) {
-  photo.src = `assets/images/merch/${product.photos}-${side}.webp`;
-  photo.alt = `${product.name}, ${side} view`;
+back.addEventListener('click', () => merchFeatured.close());
+function showView(product, side) {
+  const label = `${product.name}, ${side} view`;
+  if (product.photos) {
+    photo.src = `assets/images/merch/${product.photos}-${side}.webp`;
+    photo.alt = label;
+  } else {
+    const suffix = side === 'back' ? '-back' : '';
+    garmentShape.setAttribute('href', `#merch-${product.type}${suffix}`);
+    garment.setAttribute('aria-label', label);
+    garmentPrint.toggleAttribute('hidden', side === 'back');
+  }
   for (const button of viewButtons) button.setAttribute('aria-pressed', String(button.dataset.view === side));
 }
 for (const button of viewButtons) {
   button.addEventListener('click', () => {
     const product = merchConcepts[selectedCard?.dataset.merchId];
-    if (product?.photos) showPhoto(product, button.dataset.view);
+    if (product) showView(product, button.dataset.view);
   });
 }
 merchSection.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
   event.preventDefault();
-  if (!merchFeatured.hidden) overview(); else setOpen(false);
+  setOpen(false);
 });
 cards.forEach(card => card.addEventListener('click', () => {
   const product = merchConcepts[card.dataset.merchId];
   selectedCard = card;
-  cards.forEach(item => item.setAttribute('aria-pressed', String(item === card)));
   merchFeatured.dataset.brand = product.brand;
   merchFeatured.dataset.merchId = card.dataset.merchId;
   document.getElementById('merch-feature-name').textContent = product.name;
-  document.getElementById('merch-feature-category').textContent = product.category;
   document.getElementById('merch-feature-description').textContent = product.description;
-  photo.hidden = views.hidden = !product.photos;
-  if (product.photos) showPhoto(product, product.initialView);
-  else photo.removeAttribute('src');
-  merchFeatured.querySelector('.merch-feature-garment').toggleAttribute('hidden', Boolean(product.photos));
-  document.getElementById('merch-feature-shape').setAttribute('href', `#merch-${product.type}`);
-  document.getElementById('merch-feature-logo').style.display = product.brand === 'invizible' ? '' : 'none';
-  document.getElementById('merch-feature-maverick').toggleAttribute('hidden', product.brand === 'invizible');
-  rack.hidden = true;
-  merchFeatured.hidden = false;
+  photo.hidden = !product.photos;
+  garment.toggleAttribute('hidden', Boolean(product.photos));
+  showView(product, product.initialView ?? 'front');
+  merchFeatured.returnValue = '';
+  merchFeatured.showModal();
+  merchFeatured.scrollTop = 0;
   tellChat(product);
-  back.focus({ preventScroll: true });
 }));
-document.getElementById('merch-chat').addEventListener('click', () => {
-  window.dispatchEvent(new CustomEvent('merch-chat'));
+
+document.getElementById('merch-chat').addEventListener('click', () => merchFeatured.close('chat'));
+merchFeatured.addEventListener('close', () => {
+  const trigger = selectedCard;
+  selectedCard = null;
+  if (merchFeatured.returnValue === 'chat') {
+    window.dispatchEvent(new CustomEvent('merch-chat', { detail: { trigger } }));
+  } else {
+    trigger?.focus({ preventScroll: true });
+    tellChat();
+  }
 });
