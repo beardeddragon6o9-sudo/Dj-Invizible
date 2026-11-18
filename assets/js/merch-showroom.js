@@ -6,14 +6,17 @@ const merchConcepts = {
     brand: 'invizible', type: 'tee',
     name: 'Invizible Tee',
     category: 'INVIZIBLE / T-SHIRT',
-    description: 'A stripped-back Invizible wordmark on a dark everyday tee.'
+    description: 'Washed charcoal with a diagonal Invizible chest wordmark and a mask that breaks into vinyl grooves on the back.',
+    photos: 'invizible-vinyl-tee',
+    initialView: 'front'
   },
   'invizible-hoodie': {
     brand: 'invizible', type: 'hoodie',
     name: 'Invizible Hoodie',
     category: 'INVIZIBLE / HOODIE',
-    description: 'Forest-green hoodie with a silver mask back print, disappearing contours and the signature Invizible logo.',
-    image: 'assets/images/merch/invizible-mask-hoodie-cutout.webp'
+    description: 'Forest-green hoodie with a small chest wordmark and a silver-and-sage mask with angular brows and a halftone fade on the back.',
+    photos: 'invizible-silver-mask-hoodie',
+    initialView: 'back'
   },
   'maverick-tee': {
     brand: 'maverick', type: 'tee',
@@ -34,6 +37,9 @@ const toggle = document.getElementById('merch-toggle');
 const cards = [...merchSection.querySelectorAll('.merch-item')];
 const rack = merchSection.querySelector('.merch-rack-viewport');
 const back = document.getElementById('merch-back');
+const photo = document.getElementById('merch-feature-photo');
+const views = document.getElementById('merch-views');
+const viewButtons = [...views.querySelectorAll('button[data-view]')];
 let selectedCard = null;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stackedMerch = window.matchMedia('(max-width: 1499px)');
@@ -69,6 +75,17 @@ function setOpen(open) {
 toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
 document.getElementById('merch-close').addEventListener('click', () => setOpen(false));
 back.addEventListener('click', () => overview());
+function showPhoto(product, side) {
+  photo.src = `assets/images/merch/${product.photos}-${side}.webp`;
+  photo.alt = `${product.name}, ${side} view`;
+  for (const button of viewButtons) button.setAttribute('aria-pressed', String(button.dataset.view === side));
+}
+for (const button of viewButtons) {
+  button.addEventListener('click', () => {
+    const product = merchConcepts[selectedCard?.dataset.merchId];
+    if (product?.photos) showPhoto(product, button.dataset.view);
+  });
+}
 merchSection.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
   event.preventDefault();
@@ -83,11 +100,10 @@ cards.forEach(card => card.addEventListener('click', () => {
   document.getElementById('merch-feature-name').textContent = product.name;
   document.getElementById('merch-feature-category').textContent = product.category;
   document.getElementById('merch-feature-description').textContent = product.description;
-  const photo = document.getElementById('merch-feature-photo');
-  photo.hidden = !product.image;
-  if (product.image) photo.src = product.image;
+  photo.hidden = views.hidden = !product.photos;
+  if (product.photos) showPhoto(product, product.initialView);
   else photo.removeAttribute('src');
-  merchFeatured.querySelector('.merch-feature-garment').toggleAttribute('hidden', Boolean(product.image));
+  merchFeatured.querySelector('.merch-feature-garment').toggleAttribute('hidden', Boolean(product.photos));
   document.getElementById('merch-feature-shape').setAttribute('href', `#merch-${product.type}`);
   document.getElementById('merch-feature-logo').style.display = product.brand === 'invizible' ? '' : 'none';
   document.getElementById('merch-feature-maverick').toggleAttribute('hidden', product.brand === 'invizible');

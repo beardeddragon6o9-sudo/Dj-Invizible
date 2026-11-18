@@ -88,11 +88,11 @@
       <div class="merch-rack-track">
         <div class="merch-rack-items">
           <button class="merch-item cool" type="button" data-merch-id="invizible-tee" aria-pressed="false" aria-controls="merch-featured">
-            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="merch-garment" viewBox="0 0 260 280" focusable="false" aria-hidden="true"><use href="#merch-tee"/><use class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="130" width="126" height="30"/></svg></span>
+            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><img class="merch-garment merch-product-photo" src="assets/images/merch/invizible-vinyl-tee-back.webp" alt="" loading="lazy" /></span>
             <span class="merch-item-info"><span class="merch-item-name">Invizible Tee</span><span class="merch-item-kind">T-SHIRT / CONCEPT</span></span>
           </button>
           <button class="merch-item cool" type="button" data-merch-id="invizible-hoodie" aria-pressed="false" aria-controls="merch-featured">
-            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><img class="merch-garment merch-product-photo" src="assets/images/merch/invizible-mask-hoodie-cutout.webp" width="1254" height="1254" alt="" loading="lazy" decoding="async" /></span>
+            <span class="merch-hang"><svg class="merch-hanger" viewBox="0 0 132 48" aria-hidden="true" focusable="false"><path d="M66 21 C56 18 59 7 66 7 C74 7 76 18 66 22 L66 27 M66 27 L14 44 Q9 46 10 40 L61 15 M66 27 L118 44 Q123 46 122 40 L71 15" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><img class="merch-garment merch-product-photo" src="assets/images/merch/invizible-silver-mask-hoodie-back.webp" alt="" loading="lazy" /></span>
             <span class="merch-item-info"><span class="merch-item-name">Invizible Hoodie</span><span class="merch-item-kind">HOODIE / CONCEPT</span></span>
           </button>
           <button class="merch-item warm" type="button" data-merch-id="maverick-tee" aria-pressed="false" aria-controls="merch-featured">
@@ -108,14 +108,18 @@
     </div>
     <div id="merch-featured" class="merch-featured" data-brand="invizible" hidden>
       <button type="button" id="merch-back">← All pieces</button>
-      <div class="merch-feature-visual" aria-hidden="true">
+      <div class="merch-feature-visual">
         <span class="merch-feature-glow"></span>
-        <img id="merch-feature-photo" class="merch-feature-photo" width="1254" height="1254" alt="" hidden />
-        <svg class="merch-feature-garment" viewBox="0 0 260 280" focusable="false">
+        <img id="merch-feature-photo" class="merch-feature-photo" alt="" hidden />
+        <svg class="merch-feature-garment" viewBox="0 0 260 280" aria-hidden="true" focusable="false">
           <use id="merch-feature-shape" href="#merch-tee"/>
           <use id="merch-feature-logo" class="merch-print-logo" href="#merch-invizible-wordmark" x="67" y="130" width="126" height="30"/>
           <g id="merch-feature-maverick" class="merch-print-maverick" hidden><text x="130" y="133" text-anchor="middle">MIDNITE</text><text x="130" y="151" text-anchor="middle">MAVERICK</text><path d="M130 158 l3.4 6.8 7.6 1.1 -5.5 5.3 1.3 7.5 -6.8 -3.5 -6.8 3.5 1.3 -7.5 -5.5 -5.3 7.6 -1.1 Z"/></g>
         </svg>
+      </div>
+      <div class="merch-views" id="merch-views" role="group" aria-label="Garment view" hidden>
+        <button type="button" data-view="front" aria-pressed="false">Front</button>
+        <button type="button" data-view="back" aria-pressed="false">Back</button>
       </div>
       <div class="merch-feature-copy" aria-live="polite" aria-atomic="true">
         <span class="merch-feature-kicker" id="merch-feature-category">INVIZIBLE / T-SHIRT</span>

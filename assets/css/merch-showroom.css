@@ -106,6 +106,9 @@
 /* Product photos share the hanging and enlarged garment dimensions. */
 .merch-product-photo {object-fit:contain;border-radius:8px;overflow:hidden}
 .merch-feature-photo {width:250px;height:250px;max-width:100%;object-fit:contain;border-radius:12px;animation:merchEnlarge .3s ease-out}
+.merch-views {display:flex;justify-content:center;gap:8px;margin:4px 0 12px}
+.merch-views button {min-height:44px;padding:6px 14px;border:1px solid #ffffff30;border-radius:20px;background:#141d1d;color:var(--text);font-size:12px}
+.merch-views button[aria-pressed="true"] {border-color:var(--accent);background:var(--accent);color:#111719}
 @media (max-width:420px) {.merch-feature-photo {width:220px;height:220px}}
 @media (prefers-reduced-motion:reduce) {.merch-feature-photo {animation:none!important}}
 
