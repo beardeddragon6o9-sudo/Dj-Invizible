@@ -14,6 +14,7 @@ const bookingPersona = document.getElementById('booking-persona');
 const venueNowDeck = document.getElementById('venue-now-deck');
 const btnInviz = document.getElementById('mascot-invizible');
 const btnMav = document.getElementById('mascot-maverick');
+const merchRemark = document.getElementById('merch-remark');
 const compactChat = matchMedia('(max-width: 600px), (max-height: 540px) and (pointer: coarse)');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
@@ -37,9 +38,23 @@ let chatBusy = false;
 let selectedMerch = null;
 let chatTrigger = chatToggle;
 let finishReply;
+const merchQuip = 'Checking out the merch? If that hoodie ever drops, tell ’em I sent you. I’ve been spinning for exposure long enough.';
 reducedMotion.addEventListener('change', event => { if (event.matches) finishReply?.(); });
-window.addEventListener('merch-open', () => {
-  if (compactChat.matches && !panel.classList.contains('hidden')) hidePanel();
+window.addEventListener('merch-open', event => {
+  if (event.detail?.stacked && merchRemark) {
+    hidePanel();
+    const { headerName, name } = personaUI[activePersona];
+    merchRemark.dataset.speaker = headerName || name;
+    merchRemark.replaceChildren();
+    const text = document.createTextNode(merchQuip);
+    if (reducedMotion.matches) merchRemark.append(text);
+    else revealReply(merchRemark, text);
+  } else {
+    showPanel();
+    messages.querySelector('.merch-quip')?.remove();
+    speak(merchQuip).classList.add('merch-quip');
+  }
+  if (!chatBusy) reactToReply();
 });
 window.addEventListener('merch-selection', event => {
   selectedMerch = event.detail;

@@ -36,6 +36,7 @@ const rack = merchSection.querySelector('.merch-rack-viewport');
 const back = document.getElementById('merch-back');
 let selectedCard = null;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const stackedMerch = window.matchMedia('(max-width: 1499px)');
 function tellChat(product = null) {
   window.dispatchEvent(new CustomEvent('merch-selection', { detail: product }));
 }
@@ -56,10 +57,12 @@ function setOpen(open) {
   toggle.setAttribute('aria-expanded', String(open));
   window.dispatchEvent(new CustomEvent('booth-merch', { detail: { open } }));
   if (open) {
-    window.dispatchEvent(new CustomEvent('merch-open'));
+    window.dispatchEvent(new CustomEvent('merch-open', { detail: { stacked: stackedMerch.matches } }));
     cards[0].focus({ preventScroll: true });
-    if (window.matchMedia('(max-width: 1499px)').matches) {
-      merchSection.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth', block: 'start' });
+    if (stackedMerch.matches) {
+      const remark = document.getElementById('merch-remark');
+      const scrollTarget = remark?.hasChildNodes() ? remark : merchSection;
+      scrollTarget.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth', block: 'start' });
     }
   }
 }
