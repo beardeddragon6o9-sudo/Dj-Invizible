@@ -16,10 +16,12 @@ const merchConcepts = {
     photos: 'invizible-silver-mask-hoodie',
     initialView: 'back'
   },
-  'maverick-tee': {
-    brand: 'maverick', type: 'tee',
-    name: 'Maverick Tee',
-    description: 'Dark western-inspired colours and a restrained Midnite Maverick chest print.'
+  'invizible-longsleeve': {
+    brand: 'invizible',
+    name: 'Invizible Long Sleeve',
+    description: 'White long sleeve with a black vinyl back print, a small chest wordmark, and half-faded dancers up the right sleeve.',
+    photos: 'invizible-record-longsleeve',
+    initialView: 'back'
   },
   'maverick-hoodie': {
     brand: 'maverick', type: 'hoodie',

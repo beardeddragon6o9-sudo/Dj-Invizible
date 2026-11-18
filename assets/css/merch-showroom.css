@@ -11,8 +11,6 @@
 .merch-print-maverick text:nth-child(2) {font-size:12px;letter-spacing:.6px}
 .merch-print-maverick[hidden] {display:none}
 
-.merch-item.warm,
-.merch-featured[data-brand="maverick"] {--fabric:#302822;--fabric-shadow:#1a1410;--fabric-stroke:#6b5749;--merch-print:#dfba86}
 .merch-item[data-merch-id="maverick-hoodie"],
 .merch-featured[data-merch-id="maverick-hoodie"] {--fabric:#443226;--fabric-shadow:#23170f;--fabric-stroke:#775a43;--merch-print:#f1ca91}
 /* Transparent hanging display shares the stage and the existing chat. */
