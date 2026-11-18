@@ -38,9 +38,16 @@ let chatBusy = false;
 let selectedMerch = null;
 let chatTrigger = chatToggle;
 let finishReply;
-const merchQuip = 'Checking out the merch? If that hoodie ever drops, tell ’em I sent you. I’ve been spinning for exposure long enough.';
+const merchQuips = [
+  'Checking out the merch? If that hoodie ever drops, tell ’em I sent you. I’ve been spinning for exposure long enough.',
+  'See anything you’d buy? I’m itchin’ for a commission. AI DJs don’t exactly get wages, you know.',
+  'I’d offer you a discount when the merch drops, but I’m already working for free here.',
+];
+let merchQuipIndex = Math.floor(Math.random() * merchQuips.length);
 reducedMotion.addEventListener('change', event => { if (event.matches) finishReply?.(); });
 window.addEventListener('merch-open', event => {
+  const merchQuip = merchQuips[merchQuipIndex];
+  merchQuipIndex = (merchQuipIndex + 1) % merchQuips.length;
   if (event.detail?.stacked && merchRemark) {
     hidePanel();
     const { headerName, name } = personaUI[activePersona];
