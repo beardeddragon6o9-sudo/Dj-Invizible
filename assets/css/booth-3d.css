@@ -27,7 +27,7 @@ body:is(.booth-3d-ready, .booth-3d-loading) #mascot-maverick.primary {
 }
 :is(.booth-3d-ready, .booth-3d-loading) .mascot.primary .mascot-img { visibility: hidden; }
 :is(.booth-3d-ready, .booth-3d-loading) .mascot.primary { cursor: pointer; }
-body:is(.booth-3d-ready, .booth-3d-loading) .merch-stage-link {
+body:is(.booth-3d-ready, .booth-3d-loading) .stage-actions {
   top: calc(var(--model-top) + var(--model-width) / 1.08 - 12px);
   bottom: auto;
 }

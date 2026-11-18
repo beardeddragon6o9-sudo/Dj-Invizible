@@ -1,5 +1,6 @@
 // DOM and mascot-driven booth UI.
 const panel = document.getElementById('panel');
+const chatToggle = document.getElementById('chat-toggle');
 const closePanel = document.getElementById('close-panel');
 const messages = document.getElementById('messages');
 const form = document.getElementById('composer');
@@ -14,6 +15,7 @@ const mascotCue = document.getElementById('mascot-cue');
 const venueNowDeck = document.getElementById('venue-now-deck');
 const btnInviz = document.getElementById('mascot-invizible');
 const btnMav = document.getElementById('mascot-maverick');
+const compactChat = matchMedia('(max-width: 600px), (max-height: 540px) and (pointer: coarse)');
 
 // Use this deployment's own backend: preview talks to preview, production to production.
 // This preserves the same /api/chat request body and session handling.
@@ -32,39 +34,41 @@ const personaThreads = {
 let activePersona = 'invizible';
 let chatBusy = false;
 let selectedMerch = null;
-window.addEventListener('merch-open', () => showPanel(false));
+let chatTrigger = chatToggle;
+window.addEventListener('merch-open', () => {
+  if (compactChat.matches && !panel.classList.contains('hidden')) hidePanel();
+});
 window.addEventListener('merch-selection', event => {
   selectedMerch = event.detail;
-  if (!selectedMerch) return;
-  showPanel(false);
-  speak(`Checking out the ${selectedMerch.name}? This is a design preview for now—sizes, prices and ordering aren't available yet. What would you like to know about it?`);
+  if (selectedMerch && !panel.classList.contains('hidden')) describeMerch();
 });
 window.addEventListener('merch-chat', () => {
-  showPanel(false);
-  panel.scrollIntoView({ behavior: 'auto', block: 'nearest' });
-  input?.focus({ preventScroll: true });
+  const wasClosed = panel.classList.contains('hidden');
+  showPanel({ trigger: document.getElementById('merch-chat') });
+  if (wasClosed && selectedMerch) describeMerch();
 });
 let cueTimer;
 let speakingTimer;
 let acknowledgementTimer;
 let entranceTimer;
 
+const countryHint = 'Country plans? Click or tap Maverick’s icon in the top-right corner.';
 const personaUI = {
   invizible: {
     name: 'DJ INVIZIBLE',
     headerName: 'DJ DOOM',
     avatar: 'assets/img/invizible.png',
     placeholder: 'Say something to Invizible...',
-    greeting: 'Hey, welcome to the booth! I’m DJ Doom, DJ Invizible’s virtual AI assistant. I can answer questions about his music and shows, check availability, and help send booking requests for his review. For country events, tap the Midnite Maverick icon in the top-right. What can I help you with?',
-    comeback: 'Welcome back to the booth! DJ Doom here, your virtual AI assistant. Need help checking availability, booking a show, or finding out anything about DJ Invizible? Ask away. Country plans? Maverick’s icon is up top-right.',
+    greeting: `Hey, I’m DJ Doom, DJ Invizible’s virtual AI assistant. ${countryHint}`,
+    comeback: `Welcome back! Want to hear a mix or book a date? ${countryHint}`,
     cue: 'Invizible is on deck. 🎧'
   },
   maverick: {
     name: 'MIDNITE MAVERICK',
     avatar: 'assets/img/maverick.png',
     placeholder: 'Say something to Maverick...',
-    greeting: 'Welcome to Maverick’s side of the booth! I’m DJ Doom, the virtual AI assistant for Midnite Maverick, DJ Invizible’s country-focused alias. I can answer questions about country shows, check dates, and help send booking requests for review. What are you planning?',
-    comeback: 'Welcome back to Maverick’s side of the booth! DJ Doom here. Got a question about the country set, want to check availability, or need a hand with a booking request? I’m all ears.',
+    greeting: 'Hey, I’m DJ Doom, Midnite Maverick’s virtual AI assistant. Ask me about country sets or booking a date.',
+    comeback: 'Welcome back to Maverick’s booth! Got a country set in mind or a date you’d like to check?',
     cue: 'Maverick is on deck. 🤠'
   }
 };
@@ -117,18 +121,38 @@ function flashCue(text, duration = 4000) {
   }
 }
 
-function showPanel(focusInput = true) {
+function fitChatToViewport() {
+  if (!compactChat.matches || panel.classList.contains('hidden')) return;
+  const layoutHeight = document.documentElement.clientHeight;
+  const viewport = window.visualViewport;
+  const height = viewport?.height ?? layoutHeight;
+  const inset = Math.max(0, layoutHeight - height - (viewport?.offsetTop ?? 0));
+  panel.style.setProperty('--chat-viewport-height', `${height}px`);
+  panel.style.setProperty('--chat-viewport-inset', `${inset}px`);
+  panel.classList.toggle('chat-short', height < 320);
+}
+window.visualViewport?.addEventListener('resize', fitChatToViewport);
+window.visualViewport?.addEventListener('scroll', fitChatToViewport);
+window.addEventListener('resize', fitChatToViewport);
+
+function showPanel({ trigger } = {}) {
+  if (trigger) chatTrigger = trigger;
   panel.inert = false;
   panel.classList.remove('hidden');
-  // On compact screens the panel follows the stage; do not jump past the mascots on load.
-  if (focusInput) input?.focus();
+  chatToggle.setAttribute('aria-expanded', 'true');
+  greetActivePersona();
+  messages.scrollTop = messages.scrollHeight;
+  fitChatToViewport();
+  if (compactChat.matches) panel.focus({ preventScroll: true });
+  else input?.focus();
 }
-function hidePanel() {
+function hidePanel(restoreFocus = false) {
   panel.classList.add('hidden');
   panel.inert = true;
+  chatToggle.setAttribute('aria-expanded', 'false');
   activeMascot()?.classList.remove('is-listening');
   setBoothStatus('AT THE TURNTABLES');
-  flashCue('Tap me whenever you want to talk.', 4500);
+  if (restoreFocus) chatTrigger.focus();
 }
 
 function updateQuickPrompts() {
@@ -165,6 +189,9 @@ function addMsg(text, role = 'bot') {
   return el;
 }
 function speak(text) { return addMsg(text, 'bot'); }
+function describeMerch() {
+  speak(`Checking out the ${selectedMerch.name}? This is a design preview for now—sizes, prices and ordering aren't available yet. What would you like to know about it?`);
+}
 
 function startThinking() {
   const typing = document.createElement('div');
@@ -220,7 +247,6 @@ async function askAI(userText, topic) {
 
   const sendButton = form?.querySelector('[type="submit"]');
   if (sendButton) sendButton.disabled = true;
-  if (input) input.disabled = true;
 
   try {
     const res = await fetch(AI_ENDPOINT, {
@@ -252,10 +278,7 @@ async function askAI(userText, topic) {
   } finally {
     chatBusy = false;
     if (sendButton) sendButton.disabled = false;
-    if (input) {
-      input.disabled = false;
-      if (!panel.classList.contains('hidden')) input.focus();
-    }
+    if (!compactChat.matches && !panel.classList.contains('hidden')) input?.focus();
     updateQuickPrompts();
   }
 }
@@ -274,24 +297,23 @@ function seenPersonaBefore(persona) {
   }
 }
 
-function greetOnArrival() {
-  if (personaThreads.invizible.visited) return;
-  const returning = seenPersonaBefore('invizible');
-  personaThreads.invizible.visited = true;
-  speak(returning ? personaUI.invizible.comeback : personaUI.invizible.greeting);
-  enterBooth();
-  flashCue(personaUI.invizible.cue, 4500);
+function greetActivePersona() {
+  const thread = personaThreads[activePersona];
+  if (thread.visited) return;
+  const { greeting, comeback } = personaUI[activePersona];
+  speak(seenPersonaBefore(activePersona) ? comeback : greeting);
+  thread.visited = true;
 }
 
 // Clicking the same DJ reopens/focuses the chat without losing a booking.
-// Switching DJs intentionally starts a fresh, persona-specific conversation.
+// Switching DJs restores their own conversation and draft.
 function applyPersona(persona) {
   if (chatBusy) {
     flashCue('One sec, finishing this answer.', 2300);
     return;
   }
   if (persona === activePersona) {
-    showPanel();
+    showPanel({ trigger: activeMascot() });
     acknowledgeMascot();
     flashCue('Right here. What’s up?', 3300);
     return;
@@ -310,6 +332,8 @@ function applyPersona(persona) {
   btnInviz.classList.toggle('secondary', persona !== 'invizible');
   btnMav.classList.toggle('primary', persona === 'maverick');
   btnMav.classList.toggle('secondary', persona !== 'maverick');
+  btnInviz.setAttribute('aria-label', persona === 'invizible' ? 'Open DJ Doom chat' : 'Switch to Invizible');
+  btnMav.setAttribute('aria-label', persona === 'maverick' ? 'Open Maverick chat' : 'Switch to Maverick');
 
   document.body.classList.toggle('theme-maverick', persona === 'maverick');
   document.body.classList.toggle('theme-invizible', persona === 'invizible');
@@ -330,12 +354,7 @@ function applyPersona(persona) {
     input.placeholder = personaUI[persona].placeholder;
     input.setAttribute('aria-label', `Message the ${personaUI[persona].name} virtual mascot`);
   }
-  showPanel();
-  if (!incoming.visited) {
-    const returning = seenPersonaBefore(persona);
-    speak(returning ? personaUI[persona].comeback : personaUI[persona].greeting);
-    incoming.visited = true;
-  }
+  showPanel({ trigger: chatToggle });
   updateQuickPrompts();
   enterBooth();
   flashCue(personaUI[persona].cue, 4300);
@@ -343,7 +362,14 @@ function applyPersona(persona) {
 
 btnInviz.addEventListener('click', () => applyPersona('invizible'));
 btnMav.addEventListener('click', () => applyPersona('maverick'));
-closePanel?.addEventListener('click', hidePanel);
+chatToggle.addEventListener('click', () => {
+  if (panel.classList.contains('hidden')) showPanel({ trigger: chatToggle });
+  else hidePanel(true);
+});
+closePanel?.addEventListener('click', () => hidePanel(true));
+panel.addEventListener('keydown', event => {
+  if (event.key === 'Escape') hidePanel(true);
+});
 
 quickPrompts?.addEventListener('click', event => {
   const button = event.target.closest('button[data-topic]');
@@ -370,8 +396,8 @@ let boothInitialized = false;
 function initializeBooth() {
   if (boothInitialized) return;
   boothInitialized = true;
-  showPanel(false);
-  greetOnArrival();
+  enterBooth();
+  flashCue(personaUI.invizible.cue, 4500);
   updateQuickPrompts();
 }
 if (document.readyState === 'loading') {

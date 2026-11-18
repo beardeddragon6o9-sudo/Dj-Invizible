@@ -56,21 +56,24 @@
     </div>
 
     <!-- DJ Invizible (starts as primary/center) -->
-<button id="mascot-invizible" class="mascot primary" aria-label="DJ Invizible">
+<button id="mascot-invizible" class="mascot primary" aria-label="Open DJ Doom chat">
   <img src="assets/img/invizible.png" alt="DJ Invizible Mascot" class="mascot-img portrait-art">
   <img src="assets/img/ChatGPT%20Image%20Sep%2023%2C%202026%2C%2001_27_51%20PM.png" alt="" class="mascot-img stage-art" aria-hidden="true">
-  <span class="summon-label">Summon Invizible</span>
+  <span class="summon-label">Switch to Invizible</span>
 </button>
 
 <!-- Midnite Maverick (starts tucked top-right) -->
-<button id="mascot-maverick" class="mascot secondary" aria-label="Midnite Maverick">
+<button id="mascot-maverick" class="mascot secondary" aria-label="Switch to Maverick">
   <img src="assets/img/maverick.png" alt="Midnite Maverick Mascot" class="mascot-img portrait-art">
   <img src="assets/img/ChatGPT%20Image%20Sep%2023%2C%202026%2C%2001_50_37%20PM.png" alt="" class="mascot-img stage-art" aria-hidden="true">
-  <span class="summon-label">Summon Maverick</span>
+  <span class="summon-label">Switch to Maverick</span>
 </button>
 
     <div id="mascot-cue" class="hidden" aria-hidden="true"></div>
-    <button type="button" class="merch-stage-link" id="merch-toggle" aria-controls="merch" aria-expanded="false">MERCH <span aria-hidden="true">↓</span></button>
+    <div class="stage-actions" role="group" aria-label="Booth actions">
+      <button type="button" class="stage-action" id="chat-toggle" aria-controls="panel" aria-expanded="false">Talk to the DJ</button>
+      <button type="button" class="stage-action" id="merch-toggle" aria-controls="merch" aria-expanded="false">Merch <span aria-hidden="true">↓</span></button>
+    </div>
   </div><!-- masthead -->
 
   <section id="merch" class="merch-showroom" aria-labelledby="merch-heading" aria-hidden="true" inert>
@@ -127,7 +130,7 @@
 
   <div id="app">
     <!-- The active mascot speaks through this booth-side chat bubble. -->
-    <section id="panel" class="hidden" role="region" aria-label="Chat with DJ Doom, virtual AI assistant for DJ Invizible">
+    <section id="panel" class="hidden" inert tabindex="-1" role="region" aria-label="Chat with DJ Doom, virtual AI assistant for DJ Invizible">
       <header id="panel-header">
         <img id="chat-avatar" src="assets/img/invizible.png" alt="" aria-hidden="true" />
         <div class="chat-identity">

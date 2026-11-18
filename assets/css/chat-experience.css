@@ -26,7 +26,7 @@ body.theme-maverick.ai-only #panel {
   --chat-surface: #261b16;
   background: linear-gradient(145deg, #37271ccf, var(--panel) 45%, #16120f);
 }
-#panel.hidden { visibility: hidden; }
+body.ai-only #panel.hidden { display: none; }
 body.ai-only #panel::before {
   content: "";
   position: absolute;
@@ -79,13 +79,14 @@ body.ai-only #panel::before {
   transition: background .2s ease;
 }
 #close-panel:hover { background: rgba(255,255,255,.11); }
+#panel-header, #quick-prompts, #composer, .chat-footnote { flex: 0 0 auto; }
 #close-panel:focus-visible, .quick-prompt:focus-visible,
 #composer button:focus-visible, #composer input:focus-visible, .msg.bot a:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 #messages {
   flex: 1 1 auto;
-  min-height: 112px;
+  min-height: 0;
   min-width: 0;
   padding: 16px 14px;
   gap: 13px;
@@ -236,16 +237,28 @@ body.ai-only #panel::before {
   body.ai-only #panel::before { left: calc(50% - 8px); top: -9px; transform: rotate(135deg); }
   #mascot-cue { display: none; }
 }
-@media (max-width: 600px) {
+@media (max-width: 600px), (max-height: 540px) and (pointer: coarse) {
+  body:has(#panel:not(.hidden)) .stage-actions { visibility: hidden; }
   body.ai-only #panel {
-    width: calc(100vw - 24px);
-    max-width: calc(100vw - 24px);
-    margin: -10px auto 24px;
-    max-height: min(520px, 66svh);
+    --chat-gap: calc(12px + env(safe-area-inset-bottom, 0px));
+    position: fixed;
+    inset: auto 12px calc(var(--chat-gap) + var(--chat-viewport-inset, 0px));
+    width: auto;
+    max-width: none;
+    margin: 0;
+    max-height: min(450px, calc(var(--chat-viewport-height, 100dvh) - var(--chat-gap) - 12px));
+    overflow: hidden;
   }
-  #messages { min-height: 104px; padding: 13px 11px; }
-  #quick-prompts { padding-left: 10px; padding-right: 10px; }
-  #composer { padding-left: 10px; padding-right: 10px; }
+  body.ai-only #panel::before { display: none; }
+  #panel-header { min-height: 58px; padding: 6px 11px; }
+  #chat-avatar { flex-basis: 38px; width: 38px; height: 38px; }
+  #close-panel { flex-basis: 44px; height: 44px; }
+  #messages { padding: 10px 11px; overscroll-behavior: contain; }
+  #quick-prompts { padding: 0 10px 8px; }
+  .quick-prompt { min-height: 44px; }
+  #composer { padding: 8px 10px 6px; }
+  #composer input[type="text"], #composer button { min-height: 44px; font-size: 16px; }
+  #panel.chat-short #quick-prompts, #panel.chat-short .chat-footnote { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .msg, .typing-dots i, .mascot.primary.is-speaking .stage-art { animation: none !important; }

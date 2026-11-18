@@ -20,8 +20,6 @@
 .merch-featured[data-merch-id="maverick-hoodie"] {--fabric:#443226;--fabric-shadow:#23170f;--fabric-stroke:#775a43;--merch-print:#f1ca91}
 /* Transparent hanging display shares the stage and the existing chat. */
 .merch-symbols {position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
-.merch-stage-link {position:absolute;z-index:8;left:var(--stage-x);bottom:18px;transform:translateX(-50%);padding:12px 24px;border:1px solid #ffffff30;border-radius:30px;background:#101719;color:var(--text);letter-spacing:.15em;cursor:pointer}
-.merch-stage-link[aria-expanded="true"] {border-color:var(--accent);box-shadow:0 0 20px #a8cbb51a}
 .merch-showroom {--merch-accent:153,199,168;position:absolute;top:140px;left:calc(23vw - 110px);width:220px;max-width:220px;z-index:8;color:var(--text);visibility:hidden;opacity:0;transform:translateY(-110vh);transition:transform 1.25s cubic-bezier(.55,.05,.8,.45),opacity .9s,visibility 1.25s;pointer-events:none}
 .merch-showroom.is-open {visibility:visible;opacity:1;transform:none;pointer-events:auto;animation:merchReelDown 2.5s both}
 .theme-maverick .merch-showroom {--merch-accent:227,171,113}
@@ -32,7 +30,7 @@
 .merch-concept-note {font-size:11px;color:var(--muted);margin:8px 0 16px}
 .merch-showroom button {font:inherit;cursor:pointer;color:inherit}
 #merch-close,#merch-back,#merch-chat {border:1px solid #ffffff30;border-radius:20px;background:#141d1ded;padding:9px 13px;min-height:42px;font-size:12px}
-.merch-showroom button:focus-visible,.merch-stage-link:focus-visible {outline:2px solid var(--accent);outline-offset:4px}
+.merch-showroom button:focus-visible {outline:2px solid var(--accent);outline-offset:4px}
 .merch-rack-track {position:relative}
 .merch-rack-items {display:grid;grid-template-columns:minmax(0,1fr);gap:16px;position:relative;padding-top:16px}
 /* Actual repeated link silhouettes rather than a solid clothes rail. */
