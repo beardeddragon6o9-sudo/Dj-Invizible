@@ -48,6 +48,18 @@ function followMerch() {
   stopFollowingMerch();
   const scroller = getComputedStyle(document.body).overflowY === 'auto' ? document.body : document.scrollingElement;
   const startY = scroller.scrollTop;
+  // Use layout coordinates once so animation, sway, and browser toolbar changes
+  // cannot move the destination back and forth while the viewport is travelling.
+  const rackTop = merchSection.offsetTop;
+  const rackHeight = merchSection.scrollHeight;
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  const inset = Math.max(0, Math.min(16, (viewportHeight - rackHeight) / 2));
+  const remark = document.getElementById('merch-remark');
+  let targetTop = rackTop;
+  if (remark?.offsetHeight && rackTop + rackHeight - remark.offsetTop <= viewportHeight - 32) {
+    targetTop = remark.offsetTop;
+  }
+  const targetY = Math.max(0, targetTop - inset);
   const started = performance.now();
   const entrance = merchSection.getAnimations().find(animation => animation.animationName === 'merchReelDown');
   const duration = entrance?.effect.getComputedTiming().duration || 650;
@@ -66,21 +78,9 @@ function followMerch() {
       stopFollowingMerch();
       return;
     }
-    // Aim at the rack's final position, independent of its animated translation.
-    const transform = new DOMMatrixReadOnly(getComputedStyle(merchSection).transform);
-    const rackTop = merchSection.getBoundingClientRect().top + scroller.scrollTop - transform.m42;
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-    const inset = Math.max(0, Math.min(16, (viewportHeight - merchSection.scrollHeight) / 2));
-    const remark = document.getElementById('merch-remark');
-    let targetTop = rackTop;
-    if (remark?.offsetHeight) {
-      const remarkTop = remark.getBoundingClientRect().top + scroller.scrollTop;
-      // Include the mascot's remark when the entire rack still fits below it.
-      if (rackTop + merchSection.scrollHeight - remarkTop <= viewportHeight - 32) targetTop = remarkTop;
-    }
     const progress = reducedMotion.matches ? 1 : Math.min(1, (now - started) / duration);
     const eased = progress * progress * (3 - 2 * progress);
-    scroller.scrollTo({ top: startY + (targetTop - inset - startY) * eased, behavior: 'instant' });
+    scroller.scrollTo({ top: startY + (targetY - startY) * eased, behavior: 'instant' });
     if (progress < 1) frame = requestAnimationFrame(follow);
     else stopFollowingMerch();
   }
