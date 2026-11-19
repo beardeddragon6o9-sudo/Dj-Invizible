@@ -42,10 +42,56 @@ const viewButtons = [...document.querySelectorAll('#merch-views button[data-view
 let selectedCard = null;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stackedMerch = window.matchMedia('(max-width: 1499px)');
+let stopFollowingMerch = () => {};
+
+function followMerch() {
+  stopFollowingMerch();
+  const scroller = getComputedStyle(document.body).overflowY === 'auto' ? document.body : document.scrollingElement;
+  const startY = scroller.scrollTop;
+  const started = performance.now();
+  const entrance = merchSection.getAnimations().find(animation => animation.animationName === 'merchReelDown');
+  const duration = entrance?.effect.getComputedTiming().duration || 650;
+  const controls = new AbortController();
+  let frame;
+  stopFollowingMerch = () => {
+    cancelAnimationFrame(frame);
+    controls.abort();
+  };
+  // Let visitors take over as soon as they touch, scroll, or use the keyboard.
+  for (const event of ['touchstart', 'pointerdown', 'wheel', 'keydown']) {
+    window.addEventListener(event, stopFollowingMerch, { passive: true, signal: controls.signal });
+  }
+  function follow(now) {
+    if (!stackedMerch.matches || !merchSection.classList.contains('is-open')) {
+      stopFollowingMerch();
+      return;
+    }
+    // Aim at the rack's final position, independent of its animated translation.
+    const transform = new DOMMatrixReadOnly(getComputedStyle(merchSection).transform);
+    const rackTop = merchSection.getBoundingClientRect().top + scroller.scrollTop - transform.m42;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const inset = Math.max(0, Math.min(16, (viewportHeight - merchSection.scrollHeight) / 2));
+    const remark = document.getElementById('merch-remark');
+    let targetTop = rackTop;
+    if (remark?.offsetHeight) {
+      const remarkTop = remark.getBoundingClientRect().top + scroller.scrollTop;
+      // Include the mascot's remark when the entire rack still fits below it.
+      if (rackTop + merchSection.scrollHeight - remarkTop <= viewportHeight - 32) targetTop = remarkTop;
+    }
+    const progress = reducedMotion.matches ? 1 : Math.min(1, (now - started) / duration);
+    const eased = progress * progress * (3 - 2 * progress);
+    scroller.scrollTo({ top: startY + (targetTop - inset - startY) * eased, behavior: 'instant' });
+    if (progress < 1) frame = requestAnimationFrame(follow);
+    else stopFollowingMerch();
+  }
+  frame = requestAnimationFrame(follow);
+}
+
 function tellChat(product = null) {
   window.dispatchEvent(new CustomEvent('merch-selection', { detail: product }));
 }
 function setOpen(open) {
+  stopFollowingMerch();
   if (!open) {
     toggle.focus({ preventScroll: true });
     tellChat();
@@ -59,11 +105,7 @@ function setOpen(open) {
   if (open) {
     window.dispatchEvent(new CustomEvent('merch-open', { detail: { stacked: stackedMerch.matches } }));
     cards[0].focus({ preventScroll: true });
-    if (stackedMerch.matches) {
-      const remark = document.getElementById('merch-remark');
-      const scrollTarget = remark?.hasChildNodes() ? remark : merchSection;
-      scrollTarget.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth', block: 'start' });
-    }
+    if (stackedMerch.matches) followMerch();
   }
 }
 toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
@@ -94,6 +136,7 @@ merchSection.addEventListener('keydown', event => {
   setOpen(false);
 });
 cards.forEach(card => card.addEventListener('click', () => {
+  stopFollowingMerch();
   const product = merchConcepts[card.dataset.merchId];
   selectedCard = card;
   merchFeatured.dataset.brand = product.brand;
