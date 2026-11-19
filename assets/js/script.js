@@ -150,7 +150,10 @@ window.visualViewport?.addEventListener('scroll', fitChatToViewport);
 window.addEventListener('resize', fitChatToViewport);
 
 function showPanel({ trigger } = {}) {
-  if (trigger) chatTrigger = trigger;
+  if (trigger) {
+    chatTrigger = trigger;
+    panel.classList.add('chat-engaged');
+  }
   panel.inert = false;
   panel.classList.remove('hidden');
   chatToggle.setAttribute('aria-expanded', 'true');
@@ -162,6 +165,7 @@ function showPanel({ trigger } = {}) {
   else input?.focus();
 }
 function hidePanel(restoreFocus = false) {
+  panel.classList.remove('chat-engaged');
   panel.classList.add('hidden');
   panel.inert = true;
   finishReply?.();
@@ -439,6 +443,7 @@ quickPrompts?.addEventListener('click', event => {
 });
 
 input?.addEventListener('focus', () => {
+  panel.classList.add('chat-engaged');
   if (!chatBusy) {
     activeMascot()?.classList.add('is-listening');
     setBoothStatus('LISTENING');

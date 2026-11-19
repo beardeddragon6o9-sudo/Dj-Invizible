@@ -268,7 +268,7 @@ body.ai-only #panel::after {
   }
 }
 @media (max-width: 600px), (max-height: 540px) and (pointer: coarse) {
-  body.ai-only #panel:is(.chat-keyboard, :has(#input:focus)) {
+  body.ai-only #panel:is(.chat-engaged, .chat-keyboard, :has(#input:focus)) {
     --chat-gap: calc(12px + env(safe-area-inset-bottom, 0px));
     position: fixed;
     inset: auto 12px calc(var(--chat-gap) + var(--chat-viewport-inset, 0px));
@@ -278,8 +278,8 @@ body.ai-only #panel::after {
     max-height: min(450px, calc(var(--chat-viewport-height, 100dvh) - var(--chat-gap) - 12px));
     overflow: hidden;
   }
-  body.ai-only #panel:is(.chat-keyboard, :has(#input:focus))::before,
-  body.ai-only #panel:is(.chat-keyboard, :has(#input:focus))::after { display: none; }
+  body.ai-only #panel:is(.chat-engaged, .chat-keyboard, :has(#input:focus))::before,
+  body.ai-only #panel:is(.chat-engaged, .chat-keyboard, :has(#input:focus))::after { display: none; }
   #panel-header { min-height: 48px; padding: 3px 10px 1px 14px; }
   #chat-avatar { flex-basis: 32px; width: 32px; height: 32px; }
   #close-panel { flex-basis: 44px; height: 44px; }
