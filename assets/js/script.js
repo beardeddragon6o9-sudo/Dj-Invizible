@@ -84,15 +84,15 @@ const personaUI = {
     headerName: 'DJ DOOM',
     avatar: 'assets/img/invizible.png',
     placeholder: 'Say something to Invizible...',
-    greeting: `Hey, I’m DJ Doom, DJ Invizible’s virtual AI assistant. ${countryHint}`,
-    comeback: `Welcome back! Want to hear a mix or book a date? ${countryHint}`,
+    greeting: `Hey, I’m DJ Doom, DJ Invizible’s virtual AI assistant. Ask me about his sets, what’s included, and any setup or event requirements. Planning something specific? Tell me what you have in mind—I can help put together a tailored booking or screening request for DJ Invizible to review. ${countryHint}`,
+    comeback: `Welcome back! Ask me about DJ Invizible’s sets, what’s included, or what your event needs. I can help put together a tailored booking or screening request for him to review. ${countryHint}`,
   },
   maverick: {
     name: 'MIDNITE MAVERICK',
     avatar: 'assets/img/maverick.png',
     placeholder: 'Say something to Maverick...',
-    greeting: 'Hey, I’m DJ Doom, Midnite Maverick’s virtual AI assistant. Ask me about country sets or booking a date.',
-    comeback: 'Welcome back to Maverick’s booth! Got a country set in mind or a date you’d like to check?',
+    greeting: 'Hey, I’m Midnite Maverick’s AI assistant. Midnite Maverick is DJ Invizible’s country alias, and I look after the country side of things. Got questions or want to send in a booking request? Ask away!',
+    comeback: 'Welcome back! I’m the AI assistant for Midnite Maverick, DJ Invizible’s country alias. Got questions about the country side of things or want to send in a booking request? Ask away!',
   }
 };
 const promptText = {
@@ -405,7 +405,9 @@ function applyPersona(persona) {
   if (input) input.value = incoming.draft;
   if (bookingPersona) bookingPersona.value = persona;
   panelTitle.textContent = personaUI[persona].headerName || personaUI[persona].name;
-  if (chatFootnote) chatFootnote.textContent = 'DJ Doom • virtual AI assistant for ' + (persona === 'maverick' ? 'Midnite Maverick' : 'DJ Invizible') + '. Booking requests are reviewed by the DJ.';
+  if (chatFootnote) chatFootnote.textContent = (persona === 'maverick'
+    ? 'Virtual AI assistant for Midnite Maverick, DJ Invizible’s country alias.'
+    : 'DJ Doom • virtual AI assistant for DJ Invizible.') + ' Booking requests are reviewed by the DJ.';
   if (chatAvatar) chatAvatar.src = personaUI[persona].avatar;
   setBoothStatus('AT THE TURNTABLES');
   panel.setAttribute('aria-label', `Chat with ${personaUI[persona].name} mascot`);
